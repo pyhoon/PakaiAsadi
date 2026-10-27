@@ -1,0 +1,181 @@
+﻿AppType=StandardJava
+Build1=Default,b4j.pakai,hu2_acceptall
+Build2=MariaDB,b4j.pakai,MariaDB,hu2_acceptall
+Build3=MySQL,b4j.pakai,MySQL,hu2_acceptall
+File1=.env.example
+File2=config.example
+File3=mariadb.example
+File4=mysql.example
+File5=sqlite.example
+FileGroup1=config
+FileGroup2=config
+FileGroup3=config
+FileGroup4=config
+FileGroup5=config
+Group=App
+Library1=endsmeet
+Library10=webapiutils
+Library2=javaobject
+Library3=jcore
+Library4=jsql
+Library5=minicss
+Library6=minihtml
+Library7=minijs
+Library8=miniormutils
+Library9=pakailanyard
+Module1=AsadiHandler
+Module10=CategoriesView
+Module11=FindApiHandler
+Module12=HelpHandler
+Module13=HttpsFilter
+Module14=MainView
+Module15=MC
+Module16=MH
+Module17=ORM
+Module18=PakaiAsadi
+Module19=ProductsApiHandler
+Module2=AsadiState
+Module20=ProductsHandler
+Module21=ProductsModel
+Module22=ProductsView
+Module3=AuthFilter
+Module4=AuthHandler
+Module5=AuthModel
+Module6=AuthView
+Module7=CategoriesApiHandler
+Module8=CategoriesHandler
+Module9=CategoriesModel
+NumberOfFiles=5
+NumberOfLibraries=10
+NumberOfModules=22
+Version=10.7
+@EndOfDesignText@
+#Region  Project Attributes
+'================================================
+'Template:  Pakai Asadi (SQLite Manager)
+'Version:   0.11 Development
+'License:   MIT License
+'Developer: Poon Yip Hoon (Aeric)
+'================================================
+#CommandLineArgs:
+#MergeLibraries: True
+#End Region
+#If MariaDB
+#AdditionalJar: mariadb-java-client-3.5.9
+#Else If MySQL
+#AdditionalJar: mysql-connector-j-9.7.0
+#Else
+#AdditionalJar: sqlite-jdbc
+#End If
+#Region  Macros
+#Macro: Title, Class Templates, ide://run?File=%PROJECT%\create_excluded.bat&Args=..\AuthFilter.bas&Args=..\AuthHandler.bas&Args=..\AuthView.bas&Args=..\AuthModel.bas
+#Macro: Title, Update Manifest, ide://run?File=%ADDITIONAL%\..\B4X\manifest-writer.jar&Args=%PROJECT%\..&Args=%PROJECT%\..&Args=Version&Args=0.30
+#Macro: Title, Create B4xLib, ide://run?File=%JAVABIN%\jar.exe&WorkingDirectory=..\&Args=-cMf&Args=..\release\PakaiLanyard.b4xlib&Args=*.b4x_excluded&Args=Snippets&Args=..\manifest.txt&Args=..\LICENSE.txt
+#Macro: Title, Release folder, ide://run?File=%WINDIR%\SysWOW64\explorer.exe&Args=%PROJECT%\..\release
+#Macro: Title, Copy to AddLibs, ide://run?File=%COMSPEC%&Args=/c&Args=copy&Args=%PROJECT%\..\release\*.b4xlib&Args=%ADDITIONAL%\..\B4X
+#Macro: Title, ModelGenerator, ide://run?File=%ADDITIONAL%\modgen.jar&Args=%STATE1%&codesync=True
+#End Region
+'Download tools:
+'<link>libget.jar|https://github.com/pyhoon/libget-b4j/releases/download/v2.60/libget.jar</link>
+'<link>resget.jar|https://github.com/pyhoon/resget-b4j/releases/download/v1.10/resget.jar</link>
+'<link>modgen.jar|https://github.com/pyhoon/modgen-b4j/releases/download/v0.60/modgen.jar</link>
+Sub Process_Globals
+	Public DB 	As MiniORM
+	Public App 	As EndsMeet
+	Public Api	As ApiSettings
+	Public HRM	As HttpResponseMessage
+	Private Asadi As PakaiAsadi
+	Public Const APP_VERSION As String = "1.00"
+End Sub
+
+' <link>Open in browser|http://127.0.0.1:8080</link>
+' <link>Donate|https://paypal.me/aeric80/</link> | <link>Forum|https://www.b4x.com/android/forum/threads/web-project-template-pakai-server-v6.169224/</link> | <link>GitHub|https://github.com/pyhoon/pakai-server-b4j</link>
+Sub AppStart (Args() As String)
+	App.Initialize
+	App.LoadConfig
+	'App.LoadDotEnv
+	
+	#If Release
+	App.ssl.ShowLog = True
+	App.ssl.Enabled = True
+	#End If
+	
+	' Frontend using HTMX and AlpineJS
+	App.Get("", "ProductsHandler")
+	App.Get("/categories", "CategoriesHandler")
+	App.Rest("/hx/products/*", "ProductsHandler")
+	App.Rest("/hx/categories/*", "CategoriesHandler")
+	
+	' For REST API
+	App.Route("/api/find", "FindApiHandler", Array("get", "post"))
+	App.Get("/api/find/products-by-category_id/*", "FindApiHandler")
+	App.Rest("/api/products/*", "ProductsApiHandler")
+	App.Rest("/api/categories/*", "CategoriesApiHandler")
+	App.Get("/help", "HelpHandler")
+	
+	' Auth routes
+	App.Get("/login", "AuthHandler")
+	App.Get("/logout", "AuthHandler")
+	App.Get("/register", "AuthHandler")
+	App.Post("/login", "AuthHandler")
+	App.Post("/register", "AuthHandler")
+	
+	' Auth Filter
+	App.srvr.AddFilter("/*", "AuthFilter", False)
+	
+	' Initialize the app data before registering the explicit SQLite admin target.
+	ORM.InitDatabase
+	#If MariaDB
+	Log("Pakai Asadi routes are not registered for non-SQLite builds")
+	#Else If MySQL
+	Log("Pakai Asadi routes are not registered for non-SQLite builds")
+	#Else
+	RegisterAsadi
+	#End If
+	
+	App.Start
+	Log(App.StartupMessage)
+	App.ctx.Put("VERSION", APP_VERSION)
+	Log($"App version: ${APP_VERSION}"$)
+	Log($"Open the following URL from your web browser"$)
+	Log(App.ServerUrl)
+	
+	Api = App.api
+	Api.EnableHelp = True
+	HRM.Initialize
+	HRM.VerboseMode = Api.VerboseMode
+	HRM.ContentType = Api.ContentType
+	HRM.PayloadType = Api.PayloadType
+	StartMessageLoop
+End Sub
+
+Private Sub RegisterAsadi
+	Dim DbConfig As Map = File.ReadMap(File.DirApp, "sqlite.ini")
+	Dim DbDirectory As String = DbConfig.GetDefault("DbDir", "")
+	If DbDirectory = "" Then DbDirectory = File.DirApp
+	Dim DirectoryFile As JavaObject
+	DirectoryFile.InitializeNewInstance("java.io.File", Array(DbDirectory))
+	If DirectoryFile.RunMethod("isAbsolute", Null) = False Then DbDirectory = File.Combine(File.DirApp, DbDirectory)
+	DirectoryFile.InitializeNewInstance("java.io.File", Array(DbDirectory))
+	DbDirectory = DirectoryFile.RunMethod("getCanonicalPath", Null)
+	Dim DbFile As String = DbConfig.GetDefault("DbFile", "pakai.db")
+	Dim DbPath As String = File.Combine(DbDirectory, DbFile)
+	Asadi.Initialize(App, DbDirectory, "AuthorizeAsadi")
+	Asadi.BasePath = "/asadi"
+	If Asadi.AddDatabase("pakai", DbPath) = False Then
+		Log("Pakai Asadi: configured SQLite file was not registered")
+		Return
+	End If
+	If Asadi.Start = False Then Log("Pakai Asadi: routes were not registered")
+End Sub
+
+' Lanyard AuthFilter authenticates sessions; Asadi additionally requires the explicit admin role.
+Public Sub AuthorizeAsadi (req As ServletRequest) As Boolean
+	Try
+		Dim Role As Object = req.GetSession.GetAttribute("role")
+		If Role = Null Then Return False
+		Return Role.As(String).EqualsIgnoreCase("admin")
+	Catch
+		Return False
+	End Try
+End Sub

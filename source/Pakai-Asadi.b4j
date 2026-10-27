@@ -1,0 +1,71 @@
+AppType=StandardJava
+Group=App
+Library1=endsmeet
+Library2=javaobject
+Library3=jsql
+Library4=minihtml
+Library5=miniormutils
+Module1=AsadiHandler
+Module2=AsadiState
+Module3=DemoHomeHandler
+Module4=PakaiAsadi
+NumberOfLibraries=5
+NumberOfModules=4
+Version=10.7
+@EndOfDesignText@
+#Region Project Attributes
+' Pakai Asadi M1 — embedded SQLite overview and local demo host
+#CommandLineArgs:
+#MergeLibraries: True
+#If Release
+#AdditionalJar: sqlite-jdbc-3.53.4.0
+#Else
+#AdditionalJar: sqlite-jdbc-3.53.4.0
+#End If
+#End Region
+Sub Process_Globals
+	Public App As EndsMeet
+	Private Asadi As PakaiAsadi
+	Private DemoDirectory As String
+End Sub
+
+Sub AppStart (Args() As String)
+	App.Initialize
+	App.Port = 8080
+	DemoDirectory = File.Combine(File.DirApp, "data")
+	File.MakeDir(File.DirApp, "data")
+	CreateDemoDatabase
+
+	App.Get("/", "DemoHomeHandler")
+	Asadi.Initialize(App, DemoDirectory, "AuthorizeAsadi")
+	Asadi.BasePath = "/asadi"
+	If Asadi.AddDatabase("demo", File.Combine(DemoDirectory, "demo.db")) = False Then
+		Log("Demo database registration failed")
+		Return
+	End If
+	If Asadi.Start = False Then
+		Log("Asadi startup failed; host server will not start")
+		Return
+	End If
+	App.Start
+	Log(App.StartupMessage)
+	Log("Demo home: " & App.ServerUrl & "/")
+	Log("Asadi workspace: " & App.ServerUrl & "/asadi")
+	StartMessageLoop
+End Sub
+
+' Demo-only gate: accept requests originating from the same machine. Replace with the host's real admin-role check.
+Public Sub AuthorizeAsadi (req As ServletRequest) As Boolean
+	Dim Address As String = req.RemoteAddress
+	Return Address = "127.0.0.1" Or Address = "::1" Or Address = "0:0:0:0:0:0:0:1"
+End Sub
+
+Private Sub CreateDemoDatabase
+	Dim Path As String = File.Combine(DemoDirectory, "demo.db")
+	Dim Db As SQL
+	Db.Initialize("org.sqlite.JDBC", "jdbc:sqlite:" & Path)
+	Db.ExecNonQuery("CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, title TEXT NOT NULL, body TEXT)")
+	Dim Count As Int = Db.ExecQuerySingleResult("SELECT COUNT(*) FROM notes")
+	If Count = 0 Then Db.ExecNonQuery2("INSERT INTO notes(title, body) VALUES(?, ?)", Array As String("Welcome", "This database is registered by trusted demo-host code."))
+	Db.Close
+End Sub

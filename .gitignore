@@ -1,0 +1,8 @@
+# B4J generated output and runtime databases/configuration
+demo/Objects/
+demo/AutoBackups/
+source/Objects/
+*.db
+*.db-shm
+*.db-wal
+*.b4j.meta
