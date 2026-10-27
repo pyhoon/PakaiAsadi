@@ -77,4 +77,17 @@ Verified Lanyard host behavior from the checked-out files:
 - Asadi's integration adds `Main.AuthorizeAsadi(req)` and requires session `role = admin` on every Asadi handler call. Lanyard's filter remains the login gate; the extra callback is the separate admin authorization gate. Current Asadi routes are GET-only, so no Asadi state-changing request is exposed in this milestone.
 - Asadi is registered only for the configured SQLite database under the directory read from `sqlite.ini`. The normal Pakai routes remain present. Non-SQLite build variants skip Asadi registration.
 
-The user-created `demo/Objects` database/config/runtime output and `demo/AutoBackups` are kept out of version control by `.gitignore`; builds were run with `-NoClean=True`. Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` completed successful B4JBuilder 10.70 Build tasks. The applications were not launched, so no runtime behavior is claimed.
+The user-created `demo/Objects` database/config/runtime output and `demo/AutoBackups` are kept out of version control by `.gitignore`; builds were run with `-NoClean=True`. Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` completed successful B4JBuilder 10.70 Build tasks.
+
+## M2 implementation note (2026-10-28)
+
+M2 adds schema-object detail pages and a bounded, read-only table/view browser to the existing handler. Object pages read only `sqlite_master` rows for indexes and triggers. Table pages use `PRAGMA table_info`, `PRAGMA foreign_key_list`, and `PRAGMA index_list`, then render up to 50 columns with 25 rows per request. Sorting is restricted to schema-derived column names; search values are bound and escaped for `LIKE`; pagination and search lengths are bounded. Every selected value is cast to text except BLOBs, which are represented by their byte length. Column data is rendered on one line with a capped ellipsis preview, and long values retain an escaped `title` attribute.
+
+The standalone source host was launched on 2026-10-28 with Java 19.0.2 and exercised against a disposable `source/data/demo.db` containing a 61-row fixture with NULLs, BLOBs, long text, Unicode, an HTML payload, a view, an index, a trigger, and a foreign key. Verified behavior includes 25-row pages, last-page and empty-page states, ascending/descending sorting, literal `%`/`_` search, Unicode search, escaped HTML in data and reflected search text, quoted identifiers, schema details, sticky grid headers, security headers, and `400`/`404`/`405` handling. A non-loopback request received `403` from the standalone gate. The fixture and repeatable steps are in `tests/M2-fixture.sql` and `tests/M2-checklist.md`.
+
+M1/M2 remaining limitations:
+
+- The component still references the host main module (`Main`) for its authorization callback. A `BuildLibrary` attempt therefore fails with "Cannot access excluded module: main". M5 packaging will need an adapter contract that does not reference the main module, or must ship the handler/state modules outside the library with host wiring. Both normal B4J Build tasks succeed.
+- The demo's Lanyard authentication stores/compares plaintext passwords; it is a host sample, not a production authentication implementation.
+- No write, SQL-console, export, or CSRF-protected route exists yet. The browser remains GET-only.
+- Search performs a parameterized `LIKE` scan over up to 50 non-BLOB columns; there is no FTS index or query timeout. It is appropriate for an admin tool on bounded databases, not as a public search endpoint.

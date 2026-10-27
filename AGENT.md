@@ -17,6 +17,10 @@ Running `B4JBuilder.exe` with no arguments prints its own supported parameter li
 
 Use `-NoClean=True` when a project has user-managed runtime files under `Objects/` (including SQLite databases and local configuration). Do not delete or overwrite those files as part of a build. Preserve the full builder output and exit status; do not report a build as successful unless the process exits successfully.
 
+The `java` on `PATH` in this environment is Java 8, which cannot load the Java 19 class files produced by the builder. Launch compiled jars with the installed Java 19 runtime, for example `C:\Java\jdk-19.0.2\bin\java.exe -jar Objects\result.jar`, or use the B4J IDE's Run command.
+
+`-Task=BuildLibrary` currently fails for Asadi with `Cannot access excluded module: main` because the handler and public class resolve the host's `Main` module. Normal application builds are unaffected; resolve the main-module coupling before claiming a `.b4xlib` build.
+
 Builder/API reference: [B4ABuilder / B4JBuilder command-line compilation](https://www.b4x.com/android/forum/threads/b4abuilder-b4jbuilder-command-line-compilation.50154/).
 
 ## Dependencies
@@ -29,6 +33,8 @@ The builder resolves `#AdditionalJar` names from `C:\Program Files\B4X\B4J\libra
 - Register the host root route as `App.Get("", HandlerClass)`, matching Pakai's current convention. Avoid mapping a handler to literal `/`, which can collide with Jetty's default servlet mapping.
 - Register only explicitly allowlisted SQLite paths and keep HTTP routes path-free.
 - Keep the host-provided authorization callback fail-closed; in the Pakai/Lanyard demo require the `admin` session role in addition to the global authentication filter.
-- For the M1 metadata-only views, use MiniORMUtils for SQLite connection lifecycle and MiniHTML for response construction. Escape user/database-controlled text before passing it to MiniHTML `.text`.
-- Keep source modules under `source/` synchronized with the corresponding demo host modules under `demo/` until the `.b4xlib` packaging workflow is established.
-- Never run destructive verification against `demo/Objects/pakai.db`; use an isolated database copy.
+- For metadata and read-only table views, use MiniORMUtils for SQLite connection lifecycle and MiniHTML for response construction. Escape user/database-controlled text and attribute values before passing them to MiniHTML `.text`/`.attr`; MiniHTML does not escape either.
+- Never interpolate HTTP input into SQL. Resolve database/table/view names against the allowlist and `sqlite_master`, take sort/search columns only from `PRAGMA` metadata, quote identifiers, and bind search values. Keep `PRAGMA query_only=ON` on every request connection.
+- Keep the M2 browser bounded: 25 rows per page, at most 50 displayed/searchable columns, 160-character value previews, one-line grid cells with ellipsis, and escaped `title` previews. Do not turn a page render into an unbounded table scan or dump BLOBs.
+- Keep source modules under `source/` synchronized with the corresponding demo host modules under `demo/` until the `.b4xlib` packaging workflow is established. Copy `source/AsadiHandler.bas`, `AsadiState.bas`, and `PakaiAsadi.bas` over the demo copies after editing either side, then build both.
+- Never run destructive verification against `demo/Objects/pakai.db`; use an isolated database copy. `tests/M2-fixture.sql` is for a disposable demo database and replaces its `people`/`teams` fixture objects.

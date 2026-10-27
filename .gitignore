@@ -2,6 +2,8 @@
 demo/Objects/
 demo/AutoBackups/
 source/Objects/
+source/logs/
+demo/logs/
 *.db
 *.db-shm
 *.db-wal

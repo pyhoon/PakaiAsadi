@@ -1,6 +1,6 @@
 # M1 manual verification checklist
 
-Run these checks against the B4J demo host with a disposable copy of its SQLite database. The current host registers the template's `pakai.db` under `demo/Objects`; do not perform mutating or destructive test setup against that host file. They are repeatable manual checks, not yet executed in this environment.
+Run these checks against the B4J demo host with a disposable copy of its SQLite database. The current host registers the template's `pakai.db` under `demo/Objects`; do not perform mutating or destructive test setup against that host file. They are repeatable manual checks. See "Last verified" at the end for which items have actually been exercised.
 
 ## Host and routes
 
@@ -31,3 +31,7 @@ Run these checks against the B4J demo host with a disposable copy of its SQLite 
 2. Test database paths with spaces and non-ASCII characters; verify registration and read-only opening work on Windows and a POSIX platform.
 
 Run with B4J 10.7+ and the declared libraries. Record actual output and driver/JDK versions before treating the checks as passed.
+
+## Last verified
+
+2026-10-28, B4JBuilder 10.70 / Java 19.0.2, standalone source host: one listener on port 8080 served `/`, `/asadi`, and `/asadi/db/demo`; the registered `demo` database and `notes` table appeared; ordinary GET requests left the fixture row count unchanged; non-loopback requests were denied by the standalone gate; unknown databases and traversal-shaped table names returned 404. HTML/attribute escaping was checked with quotes, ampersands, `%`/`_`, Unicode, and script payloads. Route-collision rejection, the Lanyard `user`/`admin` role matrix, symlink replacement, the 500-object cap, WAL footprint accounting, driver no-create behavior, and POSIX paths were not re-run in this pass.

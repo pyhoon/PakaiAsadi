@@ -4,7 +4,7 @@ ModulesStructureVersion=1
 Type=Code
 Version=10.7
 @EndOfDesignText@
-' Shared configuration accessed by request-scoped EndsMeet handlers.
+' Shared configuration for request-scoped EndsMeet handler instances.
 Sub Process_Globals
 	Public Host As EndsMeet
 	Public BasePath As String

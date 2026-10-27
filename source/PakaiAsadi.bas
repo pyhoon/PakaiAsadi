@@ -134,9 +134,3 @@ Private Sub CanonicalPath (Path As String) As String
 	F.InitializeNewInstance("java.io.File", Array(Path))
 	Return F.RunMethod("getCanonicalPath", Null)
 End Sub
-
-Private Sub FileSeparator As String
-	Dim F As JavaObject
-	F.InitializeStatic("java.io.File")
-	Return F.GetField("separator")
-End Sub

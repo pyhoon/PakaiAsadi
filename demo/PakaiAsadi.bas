@@ -4,7 +4,8 @@ ModulesStructureVersion=1
 Type=Class
 Version=10.7
 @EndOfDesignText@
-' Embedded Pakai Asadi configuration and EndsMeet route integration.
+' Pakai Asadi public integration class.
+' Start registers GET handlers only; it never starts the host server.
 Sub Class_Globals
 	Private mApp As EndsMeet
 	Private mBasePath As String
@@ -23,20 +24,27 @@ Public Sub Initialize (HostApp As EndsMeet, AllowedDirectory As String, Authoriz
 	mInitialized = False
 	mStarted = False
 	mConfigurationValid = True
-	If HostApp.IsInitialized = False Then Return
+	If HostApp.IsInitialized = False Then
+		Log("PakaiAsadi: EndsMeet host app is not initialized")
+		Return
+	End If
 	mApp = HostApp
 	mBasePath = "/asadi"
 	mAuthorizationSub = AuthorizationSub.Trim
 	If mAuthorizationSub = "" Or SubExists(Main, mAuthorizationSub) = False Then
-		Log("PakaiAsadi: missing host authorization sub; routes will not be registered")
+		Log("PakaiAsadi: missing host authorization sub; Asadi routes will not be registered")
 		Return
 	End If
 	Try
 		mAllowedDirectory = CanonicalPath(AllowedDirectory)
 		Dim DirFile As JavaObject
 		DirFile.InitializeNewInstance("java.io.File", Array(mAllowedDirectory))
-		If DirFile.RunMethod("isDirectory", Null) = False Then Return
+		If DirFile.RunMethod("isDirectory", Null) = False Then
+			Log("PakaiAsadi: configured database directory is invalid")
+			Return
+		End If
 	Catch
+		Log("PakaiAsadi: unable to validate configured database directory")
 		Return
 	End Try
 	AsadiState.InitializeState(mApp, mBasePath, mAllowedDirectory, mAuthorizationSub)
@@ -44,14 +52,19 @@ Public Sub Initialize (HostApp As EndsMeet, AllowedDirectory As String, Authoriz
 	mInitialized = True
 End Sub
 
+' Configure a URL prefix before Start. Must be an absolute path without query/fragment.
 Public Sub setBasePath (Value As String)
-	If mStarted Then Return
+	If mStarted Then
+		Log("PakaiAsadi: BasePath cannot change after Start")
+		Return
+	End If
 	Dim Candidate As String = Value.Trim
 	If Candidate.StartsWith("/") = False Then Candidate = "/" & Candidate
 	Do While Candidate.Length > 1 And Candidate.EndsWith("/")
 		Candidate = Candidate.SubString2(0, Candidate.Length - 1)
 	Loop
 	If Candidate = "/" Or Regex.IsMatch("^/[A-Za-z0-9/_-]+$", Candidate) = False Or Candidate.Contains("//") Or Candidate.Contains("..") Then
+		Log("PakaiAsadi: invalid BasePath")
 		mConfigurationValid = False
 		Return
 	End If
@@ -63,13 +76,15 @@ Public Sub getBasePath As String
 	Return mBasePath
 End Sub
 
+' Register an existing SQLite file by logical name. The path must resolve under AllowedDirectory.
 Public Sub AddDatabase (Name As String, DatabasePath As String) As Boolean
 	If mInitialized = False Or mStarted Then Return False
 	If Regex.IsMatch("^[A-Za-z][A-Za-z0-9_-]{0,63}$", Name) = False Then Return False
 	If AsadiState.Databases.ContainsKey(Name) Then Return False
 	Try
 		Dim Canonical As String = CanonicalPath(DatabasePath)
-		If Canonical.Contains("?") Or AsadiState.IsAllowedCanonicalPath(Canonical) = False Then Return False
+		If Canonical.Contains("?") Then Return False
+		If AsadiState.IsAllowedCanonicalPath(Canonical) = False Then Return False
 		Dim DbFile As JavaObject
 		DbFile.InitializeNewInstance("java.io.File", Array(Canonical))
 		If DbFile.RunMethod("isFile", Null) = False Or DbFile.RunMethod("canRead", Null) = False Then Return False
@@ -83,7 +98,12 @@ End Sub
 
 Public Sub Start As Boolean
 	If mInitialized = False Or mStarted Or mConfigurationValid = False Then Return False
-	If SubExists(Main, mAuthorizationSub) = False Or HasRouteCollision Then Return False
+	If SubExists(Main, mAuthorizationSub) = False Then Return False
+	If HasRouteCollision Then
+		Log("PakaiAsadi: configured BasePath overlaps an existing EndsMeet route")
+		Return False
+	End If
+	' Register only after configuration and database allowlist are complete.
 	mApp.Get(mBasePath, "AsadiHandler")
 	mApp.Get(mBasePath & "/*", "AsadiHandler")
 	mStarted = True
@@ -93,14 +113,16 @@ End Sub
 Private Sub HasRouteCollision As Boolean
 	For Each Existing As Object In mApp.routes
 		Try
-			Dim R As JavaObject = Existing
-			Dim P As String = R.GetField("Path")
-			If P = mBasePath Or P = mBasePath & "/*" Or P.StartsWith(mBasePath & "/") Then Return True
-			If P.EndsWith("/*") Then
-				Dim Prefix As String = P.SubString2(0, P.Length - 2)
-				If mBasePath = Prefix Or mBasePath.StartsWith(Prefix & "/") Then Return True
+			Dim RouteObject As JavaObject = Existing
+			Dim ExistingPath As String = RouteObject.GetField("Path")
+			If ExistingPath = mBasePath Or ExistingPath = mBasePath & "/*" Then Return True
+			If ExistingPath.StartsWith(mBasePath & "/") Then Return True
+			If ExistingPath.EndsWith("/*") Then
+				Dim ExistingPrefix As String = ExistingPath.SubString2(0, ExistingPath.Length - 2)
+				If mBasePath = ExistingPrefix Or mBasePath.StartsWith(ExistingPrefix & "/") Then Return True
 			End If
 		Catch
+			' Fail closed rather than register if the route list cannot be inspected.
 			Return True
 		End Try
 	Next
