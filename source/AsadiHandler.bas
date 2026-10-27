@@ -12,6 +12,10 @@ Sub Class_Globals
 	Private Const MAX_SEARCH_COLUMNS As Int = 50
 	Private Const MAX_SEARCH_LENGTH As Int = 200
 	Private Const MAX_TEXT_LENGTH As Int = 160
+	Private Const MAX_SQL_LENGTH As Int = 20000
+	Private Const MAX_QUERY_ROWS As Int = 200
+	Private Const MAX_QUERY_COLUMNS As Int = 50
+	Private Const MAX_SQL_VALUE_LENGTH As Int = 2000
 End Sub
 
 Public Sub Initialize
@@ -42,14 +46,13 @@ Sub Handle (req As ServletRequest, resp As ServletResponse)
 		WriteError(resp, 403, "You are not authorized to administer databases")
 		Return
 	End If
-	If req.Method.EqualsIgnoreCase("GET") = False Then
-		resp.Status = 405
-		resp.SetHeader("Allow", "GET")
-		WriteError(resp, 405, "Method not allowed")
-		Return
-	End If
+	Dim Method As String = req.Method.ToUpperCase
 	Dim Path As String = req.RequestURI
 	If Path = AsadiState.BasePath Or Path = AsadiState.BasePath & "/" Then
+		If Method <> "GET" Then
+			MethodNotAllowed(resp, "GET")
+			Return
+		End If
 		WriteDashboard(resp)
 		Return
 	End If
@@ -58,9 +61,36 @@ Sub Handle (req As ServletRequest, resp As ServletResponse)
 		WriteError(resp, 404, "Page not found")
 		Return
 	End If
-	Dim DbName As String = Path.SubString(DbPrefix.Length)
-	If DbName.Contains("/") Or Regex.IsMatch("^[A-Za-z][A-Za-z0-9_-]{0,63}$", DbName) = False Or AsadiState.Databases.ContainsKey(DbName) = False Then
+	Dim Remainder As String = Path.SubString(DbPrefix.Length)
+	Dim DbName As String = Remainder
+	Dim SubRoute As String = ""
+	Dim SlashIndex As Int = Remainder.IndexOf("/")
+	If SlashIndex >= 0 Then
+		DbName = Remainder.SubString2(0, SlashIndex)
+		SubRoute = Remainder.SubString(SlashIndex + 1)
+	End If
+	If Regex.IsMatch("^[A-Za-z][A-Za-z0-9_-]{0,63}$", DbName) = False Or AsadiState.Databases.ContainsKey(DbName) = False Then
 		WriteError(resp, 404, "Database not found")
+		Return
+	End If
+	If SubRoute = "sql" Then
+		If Method <> "GET" And Method <> "POST" Then
+			MethodNotAllowed(resp, "GET, POST")
+			Return
+		End If
+		If Method = "POST" And IsSameOriginPost(req) = False Then
+			WriteError(resp, 403, "This form submission did not come from this application")
+			Return
+		End If
+		WriteSqlWorkspace(resp, DbName, req)
+		Return
+	End If
+	If SubRoute <> "" Then
+		WriteError(resp, 404, "Page not found")
+		Return
+	End If
+	If Method <> "GET" Then
+		MethodNotAllowed(resp, "GET")
 		Return
 	End If
 	Dim TableName As String = req.GetParameter("table")
@@ -72,6 +102,31 @@ Sub Handle (req As ServletRequest, resp As ServletResponse)
 		Return
 	End If
 	WriteDatabase(resp, DbName, TableName, ObjectName, req)
+End Sub
+
+Private Sub MethodNotAllowed (resp As ServletResponse, Allowed As String)
+	resp.SetHeader("Allow", Allowed)
+	WriteError(resp, 405, "Method not allowed")
+End Sub
+
+' Browsers mark form posts with Sec-Fetch-Site, which is the most reliable signal.
+' Fall back to Origin/Host for clients that do not send it. Origin "null" comes from
+' sandboxed or proxied contexts and cannot be compared, so authorization remains the gate.
+Private Sub IsSameOriginPost (req As ServletRequest) As Boolean
+	Dim FetchSite As String = req.GetHeader("Sec-Fetch-Site")
+	If FetchSite <> Null And FetchSite <> "" Then
+		Return FetchSite.EqualsIgnoreCase("same-origin") Or FetchSite.EqualsIgnoreCase("none")
+	End If
+	Dim Origin As String = req.GetHeader("Origin")
+	If Origin = Null Or Origin = "" Or Origin.EqualsIgnoreCase("null") Then Return True
+	Dim Host As String = req.GetHeader("Host")
+	If Host = Null Or Host = "" Then Return False
+	Dim OriginHost As String = Origin
+	Dim SchemeEnd As Int = OriginHost.IndexOf("://")
+	If SchemeEnd >= 0 Then OriginHost = OriginHost.SubString(SchemeEnd + 3)
+	Dim Slash As Int = OriginHost.IndexOf("/")
+	If Slash >= 0 Then OriginHost = OriginHost.SubString2(0, Slash)
+	Return OriginHost.EqualsIgnoreCase(Host)
 End Sub
 
 Private Sub WriteDashboard (resp As ServletResponse)
@@ -125,6 +180,347 @@ Private Sub WriteDatabase (resp As ServletResponse, Name As String, TableName As
 	End Try
 End Sub
 
+Private Sub WriteSqlWorkspace (resp As ServletResponse, DbName As String, req As ServletRequest)
+	Dim Path As String = AsadiState.Databases.Get(DbName)
+	If ValidateRegisteredPath(Path) = False Then
+		WriteError(resp, 404, "Database is unavailable")
+		Return
+	End If
+	Dim SqlText As String = ""
+	Dim Problem As String = ""
+	Dim Result As Map
+	Dim HasSqlResult As Boolean = False
+	Dim IsPost As Boolean = req.Method.EqualsIgnoreCase("POST")
+	If IsPost Then
+		SqlText = req.GetParameter("sql")
+		If SqlText = Null Then SqlText = ""
+		SqlText = SqlText.Trim
+		If SqlText.Length = 0 Then
+			Problem = "Enter a SQL statement to run."
+		Else If SqlText.Length > MAX_SQL_LENGTH Then
+			Problem = "SQL text is too long. Limit it to " & MAX_SQL_LENGTH & " characters."
+		Else
+			Problem = ValidateSqlStatement(SqlText)
+		End If
+		If Problem = "" Then
+			Result = RunSqlQuery(Path, SqlText)
+			HasSqlResult = True
+			If Result.Get("error") <> "" Then Problem = Result.Get("error")
+		End If
+	End If
+	Dim Content As MiniHtml = NewTag(Null, "section", "workspace sql-workspace")
+	Dim Back As MiniHtml = AddText(Content, "a", "back", "← Database overview")
+	Back.attr("href", AsadiState.BasePath & "/db/" & DbName)
+	AddText(Content, "div", "eyebrow", "SQL WORKSPACE")
+	AddText(Content, "h1", "", "Run a read-only query")
+	AddText(Content, "p", "muted", "Statements run on a read-only connection to " & DbName & ". Results are capped at " & MAX_QUERY_ROWS & " rows and " & MAX_QUERY_COLUMNS & " columns.")
+	Dim Form As MiniHtml = NewTag(Content, "form", "sql-form")
+	Form.attr("method", "post").attr("action", AsadiState.BasePath & "/db/" & DbName & "/sql")
+	Dim Area As MiniHtml = NewTag(Form, "textarea", "sql-input")
+	Area.attr("name", "sql").attr("rows", "8").attr("spellcheck", "false").attr("maxlength", "" & MAX_SQL_LENGTH)
+	Area.attr("placeholder", "SELECT name, type FROM sqlite_master ORDER BY name LIMIT 50;")
+	Area.text(EscapeHtml(SqlText))
+	Dim Actions As MiniHtml = NewTag(Form, "div", "sql-actions")
+	Dim RunButton As MiniHtml = NewTag(Actions, "button", "btn-primary")
+	RunButton.attr("type", "submit").text("Run query")
+	AddText(Actions, "span", "sql-hint", "One statement per run. SELECT, WITH, VALUES, EXPLAIN, or PRAGMA only.")
+	If IsPost Then
+		If Problem = "" Then resp.Status = 200 Else resp.Status = 400
+	End If
+	If Problem <> "" Then
+		Dim ErrorBox As MiniHtml = NewTag(Content, "section", "sql-error")
+		AddText(ErrorBox, "strong", "", "Unable to run this statement")
+		Dim ErrorText As MiniHtml = NewTag(ErrorBox, "pre", "sql-code")
+		ErrorText.text(EscapeHtml(Problem))
+	End If
+	If HasSqlResult And Problem = "" Then AddSqlResult(Content, Result)
+	WritePage(resp, DbName & " · SQL", Content)
+End Sub
+
+Private Sub AddSqlResult (Parent As MiniHtml, Result As Map)
+	Dim Columns As List = Result.Get("columns")
+	Dim Rows As List = Result.Get("rows")
+	Dim RowCount As Int = Result.Get("row_count")
+	Dim ColumnCount As Int = Result.Get("column_count")
+	Dim Elapsed As Long = Result.Get("elapsed")
+	Dim Meta As MiniHtml = NewTag(Parent, "div", "sql-meta")
+	Dim Summary As String = RowCount & IIf(RowCount = 1, " row", " rows") & " · " & Elapsed & " ms"
+	If Result.Get("has_more") Then Summary = Summary & " · showing the first " & MAX_QUERY_ROWS
+	AddText(Meta, "span", "", Summary)
+	If ColumnCount > MAX_QUERY_COLUMNS Then AddText(Meta, "span", "info-note", "Showing the first " & MAX_QUERY_COLUMNS & " of " & ColumnCount & " columns.")
+	If Columns.Size = 0 Then
+		AddText(Parent, "p", "info-note", "The statement completed and did not return a result set.")
+		Return
+	End If
+	Dim Grid As MiniHtml = NewTag(Parent, "div", "table-scroll")
+	Dim Table As MiniHtml = NewTag(Grid, "table", "data-grid")
+	Dim Head As MiniHtml = NewTag(Table, "thead", "")
+	Dim HeaderRow As MiniHtml = NewTag(Head, "tr", "")
+	For Each Column As Map In Columns
+		Dim HeaderCell As MiniHtml = NewTag(HeaderRow, "th", "")
+		HeaderCell.text(EscapeHtml(Column.Get("name")))
+		Dim TypeName As String = Column.Get("type")
+		If TypeName <> "" Then HeaderCell.attr("title", EscapeHtml(TypeName))
+	Next
+	Dim Body As MiniHtml = NewTag(Table, "tbody", "")
+	If Rows.Size = 0 Then
+		Dim EmptyRow As MiniHtml = NewTag(Body, "tr", "")
+		Dim EmptyCell As MiniHtml = NewTag(EmptyRow, "td", "empty-cell")
+		EmptyCell.attr("colspan", "" & Columns.Size)
+		AddText(EmptyCell, "span", "", "The query returned no rows.")
+	Else
+		For Each Values As List In Rows
+			Dim Row As MiniHtml = NewTag(Body, "tr", "")
+			For Each CellInfo As Map In Values
+				Dim Cell As MiniHtml = NewTag(Row, "td", "")
+				Dim Kind As String = CellInfo.Get("kind")
+				Dim Text As String = CellInfo.Get("text")
+				If Kind = "null" Then
+					AddText(Cell, "span", "null-value", "NULL")
+				Else If Kind = "blob" Then
+					AddText(Cell, "span", "blob-value", Text)
+				Else
+					Dim Display As String = Text
+					If Display.Length > MAX_TEXT_LENGTH Then Display = Display.SubString2(0, MAX_TEXT_LENGTH) & "…"
+					Dim Style As String = "cell-value"
+					If Text.Length > MAX_TEXT_LENGTH Then Style = "large-value"
+					Dim ValueCell As MiniHtml = AddText(Cell, "span", Style, Display)
+					ValueCell.attr("title", EscapeHtml(Text))
+				End If
+			Next
+		Next
+	End If
+End Sub
+
+' Runs a single already-validated statement on a fresh read-only connection.
+' open_mode=1 asks SQLite for a read-only file handle; statement validation limits
+' the allowed starting keywords, and SQLite rejects writes that get past it.
+Private Sub RunSqlQuery (Path As String, SqlText As String) As Map
+	Dim Result As Map = CreateMap("error": "", "columns": Null, "rows": Null, "elapsed": 0, "has_more": False, "column_count": 0, "row_count": 0)
+	Dim Conn As JavaObject
+	Dim Stmt As JavaObject
+	Dim Rs As JavaObject
+	Dim StartTime As Long = DateTime.Now
+	Try
+		Conn = OpenReadOnlyConnection(Path)
+		Stmt = Conn.RunMethodJO("createStatement", Null)
+		Dim HasResult As Boolean = Stmt.RunMethod("execute", Array(SqlText))
+		Dim Columns As List
+		Columns.Initialize
+		Dim Rows As List
+		Rows.Initialize
+		Dim ColumnCount As Int = 0
+		Dim HasMore As Boolean = False
+		If HasResult Then
+			Rs = Stmt.RunMethodJO("getResultSet", Null)
+			Dim Meta As JavaObject = Rs.RunMethodJO("getMetaData", Null)
+			ColumnCount = Meta.RunMethod("getColumnCount", Null)
+			Dim DisplayCount As Int = Min(ColumnCount, MAX_QUERY_COLUMNS)
+			For i = 0 To DisplayCount - 1
+				Columns.Add(CreateMap("name": SafeString(Meta.RunMethod("getColumnName", Array(i + 1)), ""), _
+					"type": TypeLabel(Meta.RunMethod("getColumnType", Array(i + 1)))))
+			Next
+			Do While Rs.RunMethod("next", Null)
+				If Rows.Size >= MAX_QUERY_ROWS Then
+					HasMore = True
+					Exit
+				End If
+				Dim Values As List
+				Values.Initialize
+				For i = 0 To DisplayCount - 1
+					Values.Add(ReadSqlValue(Rs, Meta.RunMethod("getColumnType", Array(i + 1)), i + 1))
+				Next
+				Rows.Add(Values)
+			Loop
+		End If
+		Result.Put("columns", Columns)
+		Result.Put("rows", Rows)
+		Result.Put("has_more", HasMore)
+		Result.Put("column_count", ColumnCount)
+		Result.Put("row_count", Rows.Size)
+	Catch
+		Result.Put("error", SanitizeDbError(LastException.Message, Path))
+	End Try
+	Result.Put("elapsed", DateTime.Now - StartTime)
+	CloseQuietly(Rs)
+	CloseQuietly(Stmt)
+	CloseQuietly(Conn)
+	Return Result
+End Sub
+
+Private Sub OpenReadOnlyConnection (Path As String) As JavaObject
+	Dim DriverClass As JavaObject
+	DriverClass.InitializeStatic("java.lang.Class")
+	Try
+		DriverClass.RunMethod("forName", Array("org.sqlite.JDBC"))
+	Catch
+		' The driver is normally registered as a service; the connection attempt reports a clear error otherwise.
+	End Try
+	Dim Manager As JavaObject
+	Manager.InitializeStatic("java.sql.DriverManager")
+	Dim Url As String = "jdbc:sqlite:" & Path.Replace("\", "/") & "?open_mode=1"
+	Return Manager.RunMethodJO("getConnection", Array(Url))
+End Sub
+
+' JDBC reports BLOB as 2004. Reading bytes is the only reliable way to show its size
+' because SQLite's getString decodes BLOBs into unreadable text.
+Private Sub ReadSqlValue (Rs As JavaObject, TypeId As Int, ColumnIndex As Int) As Map
+	If TypeId = 2004 Then
+		Dim Bytes() As Byte = Rs.RunMethod("getBytes", Array(ColumnIndex))
+		If Bytes = Null Then Return CreateMap("kind": "null", "text": "NULL")
+		Return CreateMap("kind": "blob", "text": "BLOB · " & Bytes.Length & " bytes")
+	End If
+	Dim Value As String = Rs.RunMethod("getString", Array(ColumnIndex))
+	If Value = Null Then Return CreateMap("kind": "null", "text": "NULL")
+	Dim Stored As String = Value
+	If Stored.Length > MAX_SQL_VALUE_LENGTH Then Stored = Stored.SubString2(0, MAX_SQL_VALUE_LENGTH) & "…"
+	Return CreateMap("kind": "text", "text": Stored)
+End Sub
+
+Private Sub TypeLabel (TypeId As Int) As String
+	Select TypeId
+		Case 2004: Return "BLOB"
+		Case 4, 5, -5, -6: Return "INTEGER"
+		Case 6, 7, 8: Return "REAL"
+		Case 1, 12, -1, -9, -15, -16: Return "TEXT"
+		Case 2, 3: Return "NUMERIC"
+		Case 16: Return "BOOLEAN"
+	End Select
+	Return ""
+End Sub
+
+Private Sub CloseQuietly (Target As JavaObject)
+	If Target = Null Then Return
+	Try
+		Target.RunMethod("close", Null)
+	Catch
+	End Try
+End Sub
+
+' Rejects empty input, multiple statements, and anything that is not a read-only statement.
+' The scanner ignores separators inside strings, quoted identifiers, and comments.
+Private Sub ValidateSqlStatement (SqlText As String) As String
+	Dim Scan As Map = ScanSql(SqlText)
+	If Scan.Get("started") = False Then Return "Enter a SQL statement to run."
+	If Scan.Get("multiple") Then Return "Only one SQL statement can run at a time."
+	Dim Keyword As String = Scan.Get("keyword")
+	Select Keyword
+		Case "SELECT", "WITH", "VALUES", "EXPLAIN", "PRAGMA"
+			Return ""
+		Case "ATTACH", "DETACH"
+			Return "Attaching or detaching databases is not allowed."
+	End Select
+	Return "Only read-only statements are allowed (SELECT, WITH, VALUES, EXPLAIN, or PRAGMA)."
+End Sub
+
+Private Sub ScanSql (SqlText As String) As Map
+	Dim Multiple As Boolean = False
+	Dim Started As Boolean = False
+	Dim Keyword As String = ""
+	Dim KeywordDone As Boolean = False
+	Dim AfterSemicolon As Boolean = False
+	Dim InString As Boolean = False
+	Dim InQuotedIdent As Boolean = False
+	Dim QuoteEnd As String = ""
+	Dim InLineComment As Boolean = False
+	Dim InBlockComment As Boolean = False
+	Dim i As Int = 0
+	Do While i < SqlText.Length
+		Dim Ch As String = SqlText.CharAt(i)
+		Dim NextCh As String = ""
+		If i + 1 < SqlText.Length Then NextCh = SqlText.CharAt(i + 1)
+		If InLineComment Then
+			If Ch = Chr(10) Or Ch = Chr(13) Then InLineComment = False
+		Else If InBlockComment Then
+			If Ch = "*" And NextCh = "/" Then
+				InBlockComment = False
+				i = i + 1
+			End If
+		Else If InString Then
+			If Ch = "'" Then
+				If NextCh = "'" Then
+					i = i + 1
+				Else
+					InString = False
+				End If
+			End If
+		Else If InQuotedIdent Then
+			If Ch = QuoteEnd Then
+				If NextCh = QuoteEnd And QuoteEnd <> "]" Then
+					i = i + 1
+				Else
+					InQuotedIdent = False
+				End If
+			End If
+		Else
+			If Ch = "-" And NextCh = "-" Then
+				If Keyword <> "" Then KeywordDone = True
+				InLineComment = True
+				i = i + 1
+			Else If Ch = "/" And NextCh = "*" Then
+				If Keyword <> "" Then KeywordDone = True
+				InBlockComment = True
+				i = i + 1
+			Else If Ch = ";" Then
+				If Keyword <> "" Then KeywordDone = True
+				AfterSemicolon = True
+			Else If IsSqlSpace(Ch) Then
+				If Keyword <> "" Then KeywordDone = True
+			Else
+				If Ch = "'" Then
+					If Keyword <> "" Then KeywordDone = True
+					InString = True
+					If AfterSemicolon Then Multiple = True
+				Else If Ch = Chr(34) Or Ch = "`" Or Ch = "[" Then
+					If Keyword <> "" Then KeywordDone = True
+					InQuotedIdent = True
+					QuoteEnd = Ch
+					If Ch = "[" Then QuoteEnd = "]"
+					If AfterSemicolon Then Multiple = True
+				Else
+					If Started = False Then
+						Started = True
+						If IsSqlIdentChar(Ch) Then
+							Keyword = Ch
+						Else
+							KeywordDone = True
+						End If
+					Else If KeywordDone = False Then
+						If Keyword <> "" And IsSqlIdentChar(Ch) Then
+							Keyword = Keyword & Ch
+						Else
+							KeywordDone = True
+						End If
+					End If
+					If AfterSemicolon Then Multiple = True
+				End If
+			End If
+		End If
+		i = i + 1
+	Loop
+	Return CreateMap("started": Started, "multiple": Multiple, "keyword": Keyword.ToUpperCase)
+End Sub
+
+Private Sub IsSqlSpace (Ch As String) As Boolean
+	Return Ch = " " Or Ch = Chr(9) Or Ch = Chr(10) Or Ch = Chr(13)
+End Sub
+
+Private Sub IsSqlIdentChar (Ch As String) As Boolean
+	Dim Code As Int = Asc(Ch)
+	Return (Code >= 65 And Code <= 90) Or (Code >= 97 And Code <= 122) Or (Code >= 48 And Code <= 57) Or Code = 95
+End Sub
+
+Private Sub SanitizeDbError (Message As Object, Path As String) As String
+	Dim Clean As String = SafeString(Message, "The database rejected this statement.")
+	Dim Marker As Int = Clean.IndexOf("[SQLITE")
+	If Marker > 0 Then Clean = Clean.SubString(Marker)
+	Dim Prefix As String = "java.sql.SQLException: "
+	If Clean.StartsWith(Prefix) Then Clean = Clean.SubString(Prefix.Length)
+	Clean = Clean.Replace(Path, "[database]").Replace(Path.Replace("\", "/"), "[database]")
+	If Clean.Length > 500 Then Clean = Clean.SubString2(0, 500) & "…"
+	Return Clean
+End Sub
+
 Private Sub WriteDatabaseOverview (resp As ServletResponse, Name As String, Db As MiniORM)
 	Dim Sql As SQL = Db.SQL
 	Dim Objects As ResultSet = Sql.ExecQuery("SELECT type, name FROM sqlite_master WHERE type IN ('table','view','index','trigger') AND name NOT LIKE 'sqlite_%' ORDER BY CASE type WHEN 'table' THEN 1 WHEN 'view' THEN 2 WHEN 'index' THEN 3 ELSE 4 END, name LIMIT 501")
@@ -151,6 +547,9 @@ Private Sub WriteDatabaseOverview (resp As ServletResponse, Name As String, Db A
 	AddText(Content, "div", "eyebrow", "DATABASE OVERVIEW")
 	AddText(Content, "h1", "", Name)
 	AddText(Content, "p", "muted", "Tables, views, indexes and triggers. Select a table or view to inspect its schema and browse rows.")
+	Dim Actions As MiniHtml = NewTag(Content, "div", "page-actions")
+	Dim SqlLink As MiniHtml = NewTag(Actions, "a", "action-link")
+	SqlLink.attr("href", AsadiState.BasePath & "/db/" & Name & "/sql").text("SQL workspace →")
 	Dim Stats As MiniHtml = NewTag(Content, "section", "stats")
 	AddStat(Stats, "Tables", Tables)
 	AddStat(Stats, "Views", Views)
@@ -717,7 +1116,7 @@ Private Sub WritePage (resp As ServletResponse, Title As String, Content As Mini
 	AddText(Breadcrumb, "span", "slash", "/")
 	AddText(Breadcrumb, "strong", "", Title)
 	Dim Readonly As MiniHtml = NewTag(Topbar, "span", "readonly")
-	Readonly.text("♙ &nbsp; Read-only overview")
+	Readonly.text("♙ &nbsp; Read-only workspace")
 	Dim ContentArea As MiniHtml = NewTag(MainContent, "div", "content")
 	ContentArea.add(Content)
 	Dim Footer As MiniHtml = NewTag(ContentArea, "footer", "")
@@ -800,5 +1199,5 @@ Private Sub getStyles As String
 End Sub
 
 Private Sub GetTableStyles As String
-	Return ".table-search{display:flex;gap:8px;margin:20px 0}.search-input{flex:1;min-width:130px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink)}.btn-search,.page-link{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:9px 13px;text-decoration:none;cursor:pointer}.clear-search{padding:10px;color:var(--blue)}.table-scroll{overflow:auto;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px}.table-workspace>.table-scroll{max-height:68vh}.data-grid,.schema-grid{border-collapse:separate;border-spacing:0;width:100%;white-space:nowrap}.object-title{color:var(--ink);text-decoration:none}.object-title:hover,.object-title:focus{color:var(--blue);text-decoration:underline}.data-grid th,.schema-grid th{position:sticky;top:0;background:#f1f4f8;text-align:left;font-size:11px;color:#62718a;padding:11px 13px;border-bottom:1px solid var(--line);z-index:1}.data-grid td,.schema-grid td{padding:10px 13px;border-bottom:1px solid #edf0f4;white-space:nowrap}.data-grid tr:last-child td,.schema-grid tr:last-child td{border-bottom:0}.sort-link{color:inherit;text-decoration:none}.sort-link:hover,.sort-link:focus,.page-link:hover,.page-link:focus{color:var(--blue);outline:2px solid #aabaff;outline-offset:2px}.sort-state{color:var(--blue);font-size:10px}.null-value,.blob-value{display:inline-block;border-radius:5px;background:#f0f3f8;color:#718098;padding:3px 6px;font-size:10px}.cell-value,.large-value{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}.pagination{display:flex;gap:12px;align-items:center;justify-content:flex-end;margin:14px 0}.page-state,.info-note{font-size:12px;color:var(--muted)}.schema-section{margin:18px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px}.schema-section>summary,.schema-subsection>summary{cursor:pointer;padding:14px 18px;color:var(--ink)}.schema-grid{font-size:12px}.schema-subsection{padding:12px 18px;border-top:1px solid var(--line)}.schema-subsection h3{font-size:13px}.schema-detail{padding:5px 0;color:var(--muted)}.sql-code{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6fa;padding:14px;border-radius:8px;color:#34435a}.empty-cell{text-align:center!important;color:var(--muted);padding:30px!important}@media(max-width:600px){.table-search{flex-wrap:wrap}.pagination{justify-content:center}.data-grid td,.data-grid th{padding:8px}.schema-section{overflow:hidden}}@media(prefers-color-scheme:dark){.data-grid th,.schema-grid th,.null-value,.blob-value{background:#202d42;color:#a9b8d1}.data-grid td,.schema-grid td{border-color:#243147}.sql-code{background:#101827;color:#d1d9e6}.search-input,.btn-search,.page-link{background:var(--surface);color:var(--ink)}}"
+	Return ".table-search{display:flex;gap:8px;margin:20px 0}.search-input{flex:1;min-width:130px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink)}.btn-search,.page-link{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:9px 13px;text-decoration:none;cursor:pointer}.clear-search{padding:10px;color:var(--blue)}.table-scroll{overflow:auto;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px}.table-workspace>.table-scroll{max-height:68vh}.data-grid,.schema-grid{border-collapse:separate;border-spacing:0;width:100%;white-space:nowrap}.object-title{color:var(--ink);text-decoration:none}.object-title:hover,.object-title:focus{color:var(--blue);text-decoration:underline}.data-grid th,.schema-grid th{position:sticky;top:0;background:#f1f4f8;text-align:left;font-size:11px;color:#62718a;padding:11px 13px;border-bottom:1px solid var(--line);z-index:1}.data-grid td,.schema-grid td{padding:10px 13px;border-bottom:1px solid #edf0f4;white-space:nowrap}.data-grid tr:last-child td,.schema-grid tr:last-child td{border-bottom:0}.sort-link{color:inherit;text-decoration:none}.sort-link:hover,.sort-link:focus,.page-link:hover,.page-link:focus{color:var(--blue);outline:2px solid #aabaff;outline-offset:2px}.sort-state{color:var(--blue);font-size:10px}.null-value,.blob-value{display:inline-block;border-radius:5px;background:#f0f3f8;color:#718098;padding:3px 6px;font-size:10px}.cell-value,.large-value{display:inline-block;max-width:280px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}.pagination{display:flex;gap:12px;align-items:center;justify-content:flex-end;margin:14px 0}.page-state,.info-note{font-size:12px;color:var(--muted)}.schema-section{margin:18px 0;background:var(--surface);border:1px solid var(--line);border-radius:12px}.schema-section>summary,.schema-subsection>summary{cursor:pointer;padding:14px 18px;color:var(--ink)}.schema-grid{font-size:12px}.schema-subsection{padding:12px 18px;border-top:1px solid var(--line)}.schema-subsection h3{font-size:13px}.schema-detail{padding:5px 0;color:var(--muted)}.sql-code{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6fa;padding:14px;border-radius:8px;color:#34435a}.empty-cell{text-align:center!important;color:var(--muted);padding:30px!important}@media(max-width:600px){.table-search{flex-wrap:wrap}.pagination{justify-content:center}.data-grid td,.data-grid th{padding:8px}.schema-section{overflow:hidden}}@media(prefers-color-scheme:dark){.data-grid th,.schema-grid th,.null-value,.blob-value{background:#202d42;color:#a9b8d1}.data-grid td,.schema-grid td{border-color:#243147}.sql-code{background:#101827;color:#d1d9e6}.search-input,.btn-search,.page-link{background:var(--surface);color:var(--ink)}}.page-actions{margin:16px 0 0}.action-link{display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:600;border-radius:8px;padding:9px 14px}.action-link:hover,.action-link:focus{background:#3350d6;outline:2px solid #aabaff;outline-offset:2px}.sql-form{margin:22px 0}.sql-input{width:100%;min-height:170px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}.sql-actions{display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap}.btn-primary{border:0;border-radius:8px;background:var(--blue);color:#fff;padding:10px 16px;font-weight:600;cursor:pointer}.btn-primary:hover,.btn-primary:focus{background:#3350d6;outline:2px solid #aabaff;outline-offset:2px}.sql-hint,.sql-meta{font-size:12px;color:var(--muted)}.sql-meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:18px 0 8px}.sql-error{margin:18px 0;padding:16px 18px;border:1px solid #e3a3a3;border-left:4px solid #d64545;background:var(--surface);border-radius:10px}.sql-error strong{display:block;margin-bottom:8px;color:#d64545}.sql-error .sql-code{margin:0;white-space:pre-wrap;word-break:break-word}.sql-workspace>.table-scroll{max-height:60vh}"
 End Sub

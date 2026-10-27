@@ -5,7 +5,7 @@ Type=Class
 Version=10.7
 @EndOfDesignText@
 ' Pakai Asadi public integration class.
-' Start registers GET handlers only; it never starts the host server.
+' Start registers the workspace routes on the host; it never starts a server.
 Sub Class_Globals
 	Private mApp As EndsMeet
 	Private mBasePath As String
@@ -83,7 +83,7 @@ Public Sub AddDatabase (Name As String, DatabasePath As String) As Boolean
 	If AsadiState.Databases.ContainsKey(Name) Then Return False
 	Try
 		Dim Canonical As String = CanonicalPath(DatabasePath)
-		If Canonical.Contains("?") Then Return False
+		If Canonical.Contains("?") Or Canonical.Contains("#") Then Return False
 		If AsadiState.IsAllowedCanonicalPath(Canonical) = False Then Return False
 		Dim DbFile As JavaObject
 		DbFile.InitializeNewInstance("java.io.File", Array(Canonical))
@@ -104,8 +104,10 @@ Public Sub Start As Boolean
 		Return False
 	End If
 	' Register only after configuration and database allowlist are complete.
+	' The handler accepts POST only on the SQL workspace URL; every other route is GET-only.
 	mApp.Get(mBasePath, "AsadiHandler")
 	mApp.Get(mBasePath & "/*", "AsadiHandler")
+	mApp.Post(mBasePath & "/*", "AsadiHandler")
 	mStarted = True
 	Return True
 End Sub
