@@ -55,10 +55,10 @@
             "Link": "https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/9.7.0/mysql-connector-j-9.7.0.jar"
         },
         {
-            "Name": "sqlite-jdbc-3.53.4.0.jar",
+            "Name": "sqlite-jdbc.jar",
             "Platform": "B4J",
             "Version": 3.53,
-            "Link": "https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar"
+            "Link": "https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.53.2.1/sqlite-jdbc-3.53.2.1.jar"
         }
     ]
 }

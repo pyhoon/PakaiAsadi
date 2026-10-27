@@ -10,9 +10,9 @@ This checkout now contains a B4J M1 source project and local demo host under `so
 - `AsadiState.bas` — request-shared module state.
 - `AsadiHandler.bas` — fail-closed host gate, MiniORMUtils-managed SQLite connections, and a MiniHTML-rendered overview.
 - `Pakai-Asadi.b4j` — demo host, configured to listen on port 8080 and serve both `/` and `/asadi` from one EndsMeet instance.
-- `libs.json` — EndsMeet 4.03 and Xerial SQLite JDBC 3.53.4.0. The driver version is selected from Maven Central metadata and the driver usage documentation, which identifies 3.53.4.0 as current.
+- `libs.json` — EndsMeet 4.03 and Xerial SQLite JDBC 3.53.2.1, matching the driver installed in the current B4J environment.
 
-The Asadi integration changes have **not yet been compiled or executed** in this environment. The demo's existing generated `Objects/src` files predate these changes and are not treated as verification. A compiled Asadi `.b4xlib` has not been generated.
+Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compiled successfully with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The applications have not been launched, so runtime behavior remains unverified. A compiled Asadi `.b4xlib` has not been generated.
 
 ## Public API
 
@@ -49,7 +49,7 @@ The Pakai demo uses Lanyard's global `AuthFilter` for session authentication and
 
 - B4J 10.7+ (matches current Pakai Server 6.99 project metadata).
 - EndsMeet 4.03.
-- Xerial `org.xerial:sqlite-jdbc:3.53.4.0`.
+- Xerial `org.xerial:sqlite-jdbc:3.53.2.1` (installed as `sqlite-jdbc.jar`).
 - MiniHTML 4.02 and MiniORMUtils 6.04, plus B4J `JavaObject` and `jSQL` libraries.
 
 Open `demo/demo.b4j` in B4J, use the IDE library installer with `demo/libs.json`, then run its Default (SQLite) build. Asadi registers only the host-configured SQLite database and does not create database files. Open `http://127.0.0.1:8080/` and navigate to `/asadi` after logging in as a user with the `admin` role. The starter template's `Objects` database/config are treated as host data and are not modified by Asadi.

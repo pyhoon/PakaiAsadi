@@ -1,15 +1,18 @@
-AppType=StandardJava
+﻿AppType=StandardJava
+Build1=Default,b4j.pakai,hu2_acceptall
 Group=App
 Library1=endsmeet
-Library2=javaobject
-Library3=jsql
-Library4=minihtml
-Library5=miniormutils
+Library2=jcore
+Library3=javaobject
+Library4=jsql
+Library5=minihtml
+Library6=miniormutils
 Module1=AsadiHandler
 Module2=AsadiState
 Module3=DemoHomeHandler
 Module4=PakaiAsadi
-NumberOfLibraries=5
+NumberOfFiles=0
+NumberOfLibraries=6
 NumberOfModules=4
 Version=10.7
 @EndOfDesignText@
@@ -17,11 +20,7 @@ Version=10.7
 ' Pakai Asadi M1 — embedded SQLite overview and local demo host
 #CommandLineArgs:
 #MergeLibraries: True
-#If Release
-#AdditionalJar: sqlite-jdbc-3.53.4.0
-#Else
-#AdditionalJar: sqlite-jdbc-3.53.4.0
-#End If
+#AdditionalJar: sqlite-jdbc
 #End Region
 Sub Process_Globals
 	Public App As EndsMeet
@@ -36,7 +35,7 @@ Sub AppStart (Args() As String)
 	File.MakeDir(File.DirApp, "data")
 	CreateDemoDatabase
 
-	App.Get("/", "DemoHomeHandler")
+	App.Get("", "DemoHomeHandler")
 	Asadi.Initialize(App, DemoDirectory, "AuthorizeAsadi")
 	Asadi.BasePath = "/asadi"
 	If Asadi.AddDatabase("demo", File.Combine(DemoDirectory, "demo.db")) = False Then

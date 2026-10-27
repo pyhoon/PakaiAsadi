@@ -26,6 +26,7 @@ The builder resolves `#AdditionalJar` names from `C:\Program Files\B4X\B4J\libra
 ## Pakai Asadi integration
 
 - Integrate with the host's existing EndsMeet instance; never start an additional server.
+- Register the host root route as `App.Get("", HandlerClass)`, matching Pakai's current convention. Avoid mapping a handler to literal `/`, which can collide with Jetty's default servlet mapping.
 - Register only explicitly allowlisted SQLite paths and keep HTTP routes path-free.
 - Keep the host-provided authorization callback fail-closed; in the Pakai/Lanyard demo require the `admin` session role in addition to the global authentication filter.
 - For the M1 metadata-only views, use MiniORMUtils for SQLite connection lifecycle and MiniHTML for response construction. Escape user/database-controlled text before passing it to MiniHTML `.text`.

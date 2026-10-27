@@ -27,7 +27,7 @@ Run these checks against the B4J demo host with a disposable copy of its SQLite 
 
 ## Driver behavior
 
-1. Use MiniORMUtils 6.04 with Xerial SQLite JDBC 3.53.4.0; verify its `Open` path with `createIfNecessary=False` does not create a removed/missing file and `PRAGMA query_only=ON` rejects a write on the request connection.
+1. Use MiniORMUtils 6.04 with the host's Xerial SQLite JDBC 3.53.2.1; verify its `Open` path with `createIfNecessary=False` does not create a removed/missing file and `PRAGMA query_only=ON` rejects a write on the request connection.
 2. Test database paths with spaces and non-ASCII characters; verify registration and read-only opening work on Windows and a POSIX platform.
 
 Run with B4J 10.7+ and the declared libraries. Record actual output and driver/JDK versions before treating the checks as passed.
