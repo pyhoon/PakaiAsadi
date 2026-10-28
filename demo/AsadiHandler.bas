@@ -298,6 +298,7 @@ Private Sub WriteDatabase (resp As ServletResponse, Name As String, TableName As
 		Try
 			If Db.IsInitialized Then Db.Close
 		Catch
+			Log(LastException.Message)
 		End Try
 		WriteError(resp, 500, "Unable to inspect this database. Check that it is a readable SQLite file.")
 	End Try
@@ -328,7 +329,7 @@ Private Sub WriteSqlWorkspace (resp As ServletResponse, DbName As String, req As
 		If Problem = "" Then
 			Result = RunSqlQuery(Path, SqlText)
 			HasSqlResult = True
-			If Result.Get("error") <> "" Then Problem = Result.Get("error")
+			If "" <> Result.Get("error") Then Problem = Result.Get("error")
 		End If
 	End If
 	Dim Content As MiniHtml = NewTag(Null, "section", "workspace sql-workspace")
@@ -485,6 +486,7 @@ Private Sub OpenJdbcConnection (Path As String, Mode As Int) As JavaObject
 		DriverClass.RunMethod("forName", Array("org.sqlite.JDBC"))
 	Catch
 		' The driver is normally registered as a service; the connection attempt reports a clear error otherwise.
+		Log(LastException.Message)
 	End Try
 	Dim Manager As JavaObject
 	Manager.InitializeStatic("java.sql.DriverManager")
@@ -527,6 +529,7 @@ Private Sub CloseQuietly (Target As JavaObject)
 	Try
 		Target.RunMethod("close", Null)
 	Catch
+		Log(LastException.Message)
 	End Try
 End Sub
 
@@ -534,7 +537,7 @@ End Sub
 ' The scanner ignores separators inside strings, quoted identifiers, and comments.
 Private Sub ValidateSqlStatement (SqlText As String) As String
 	Dim Scan As Map = ScanSql(SqlText)
-	If Scan.Get("started") = False Then Return "Enter a SQL statement to run."
+	If False = Scan.Get("started") Then Return "Enter a SQL statement to run."
 	If Scan.Get("multiple") Then Return "Only one SQL statement can run at a time."
 	Dim Keyword As String = Scan.Get("keyword")
 	Select Keyword
@@ -717,7 +720,7 @@ Private Sub WriteEditPage (resp As ServletResponse, DbName As String, Method As 
 				If Problem = "" Then Redirect = TableUrl(DbName, TableName, 1, "", "ASC", "") & "&notice=inserted"
 			Else
 				Dim KeyResult As Map = ReadKeyFromRequest(req, KeyMode, PrimaryKeys)
-				If KeyResult.Get("ok") = False Then
+				If False = KeyResult.Get("ok") Then
 					Problem = KeyResult.Get("message")
 				Else
 					Dim KeyValues As List = KeyResult.Get("values")
@@ -749,7 +752,7 @@ Private Sub WriteEditPage (resp As ServletResponse, DbName As String, Method As 
 			End If
 		Else If IsInsert = False Then
 			Dim GetKey As Map = ReadKeyFromRequest(req, KeyMode, PrimaryKeys)
-			If GetKey.Get("ok") = False Then
+			If False = GetKey.Get("ok") Then
 				CloseQuietly(Conn)
 				WriteError(resp, 400, GetKey.Get("message"))
 				Return
@@ -814,8 +817,8 @@ Private Sub RenderEditPage (resp As ServletResponse, DbName As String, TableName
 		Dim Column As Map = Columns.Get(i)
 		Dim ColumnName As String = Column.Get("name")
 		Dim DeclaredType As String = SafeString(Column.Get("type"), "")
-		Dim IsPk As Boolean = (Column.Get("pk") > 0)
-		Dim NotNull As Boolean = (Column.Get("notnull") = 1)
+		Dim IsPk As Boolean = (0 < Column.Get("pk"))
+		Dim NotNull As Boolean = (1 = Column.Get("notnull"))
 		Dim Blob As Boolean = DeclaredType.ToUpperCase.Contains("BLOB")
 		Dim FieldText As String = ""
 		Dim FieldNull As Boolean = False
@@ -922,7 +925,7 @@ Private Sub AddOriginalHiddenInputs (Parent As MiniHtml, Columns As List, RowVal
 		Dim DeclaredType As String = SafeUpper(Column.Get("type"))
 		If DeclaredType.Contains("BLOB") = False Then
 			Dim Current As Map = RowValues.Get(i)
-			If Current.Get("too_large") = False Then
+			If False = Current.Get("too_large") Then
 				AddHiddenInput(Parent, "o" & i, Current.Get("text"))
 				If Current.Get("is_null") Then AddHiddenInput(Parent, "on" & i, "1")
 			End If
@@ -1055,7 +1058,7 @@ Private Sub SaveInsert (Conn As JavaObject, TableName As String, Columns As List
 			If Value = Null Then Value = ""
 			If Value.Length > MAX_EDIT_VALUE Then Return "Column " & ColumnName & " is too long."
 			If FieldNull Then
-				If Column.Get("notnull") = 1 And Column.Get("pk") = 0 Then Return "Column " & ColumnName & " cannot be NULL."
+				If 1 = Column.Get("notnull") And 0 = Column.Get("pk") Then Return "Column " & ColumnName & " cannot be NULL."
 				If IsAutoKey(Columns, i) Then
 					' Leave the integer primary key to SQLite.
 				Else
@@ -1067,7 +1070,7 @@ Private Sub SaveInsert (Conn As JavaObject, TableName As String, Columns As List
 			Else If Value = "" And IsNumericType(DeclaredType) Then
 				If HasDefault(Column) Then
 					' Omit the column so its declared default applies.
-				Else If Column.Get("notnull") = 1 Then
+				Else If 1 = Column.Get("notnull") Then
 					Return "Column " & ColumnName & " requires a value."
 				End If
 				' Otherwise omit it so SQLite stores NULL instead of text in a numeric column.
@@ -1104,7 +1107,7 @@ Private Sub SaveUpdate (Conn As JavaObject, TableName As String, Columns As List
 	For i = 0 To Columns.Size - 1
 		Dim Column As Map = Columns.Get(i)
 		Dim DeclaredType As String = SafeUpper(Column.Get("type"))
-		Dim IsPk As Boolean = (Column.Get("pk") > 0)
+		Dim IsPk As Boolean = (0 < Column.Get("pk"))
 		If DeclaredType.Contains("BLOB") = False And IsPk = False And HasParameter(req, "f" & i) Then
 			Dim Submitted As String = req.GetParameter("f" & i)
 			If Submitted = Null Then Submitted = ""
@@ -1112,7 +1115,7 @@ Private Sub SaveUpdate (Conn As JavaObject, TableName As String, Columns As List
 			Dim Problem As String = ValidateEditValue(Column, Submitted, NullRequested)
 			If Problem <> "" Then Return EditOutcome(False, Problem, False)
 			If Submitted = "" And IsNumericType(DeclaredType) And NullRequested = False Then
-				If Column.Get("notnull") = 1 Then Return EditOutcome(False, "Column " & Column.Get("name") & " requires a value.", False)
+				If 1 = Column.Get("notnull") Then Return EditOutcome(False, "Column " & Column.Get("name") & " requires a value.", False)
 				NullRequested = True
 			End If
 			Sets.Add(QuoteIdentifier(Column.Get("name")) & " = ?")
@@ -1171,7 +1174,7 @@ Private Sub BuildVersionPredicate (Columns As List, req As ServletRequest) As Ma
 	For i = 0 To Columns.Size - 1
 		Dim Column As Map = Columns.Get(i)
 		Dim DeclaredType As String = SafeUpper(Column.Get("type"))
-		If DeclaredType.Contains("BLOB") = False And Column.Get("pk") = 0 And HasParameter(req, "o" & i) Then
+		If DeclaredType.Contains("BLOB") = False And 0 = Column.Get("pk") And HasParameter(req, "o" & i) Then
 			Dim Original As String = req.GetParameter("o" & i)
 			Parts.Add(QuoteIdentifier(Column.Get("name")) & " IS ?")
 			If req.GetParameter("on" & i) = "1" Then
@@ -1189,7 +1192,7 @@ End Sub
 Private Sub ValidateEditValue (Column As Map, Value As String, NullRequested As Boolean) As String
 	Dim ColumnName As String = Column.Get("name")
 	If Value.Length > MAX_EDIT_VALUE Then Return "Column " & ColumnName & " is too long."
-	If NullRequested And Column.Get("notnull") = 1 Then Return "Column " & ColumnName & " cannot be NULL."
+	If NullRequested And 1 = Column.Get("notnull") Then Return "Column " & ColumnName & " cannot be NULL."
 	Return ""
 End Sub
 
@@ -1208,10 +1211,10 @@ End Sub
 
 Private Sub IsAutoKey (Columns As List, Index As Int) As Boolean
 	Dim Column As Map = Columns.Get(Index)
-	If Column.Get("pk") = 0 Then Return False
+	If 0 = Column.Get("pk") Then Return False
 	Dim PrimaryCount As Int
 	For Each Candidate As Map In Columns
-		If Candidate.Get("pk") > 0 Then PrimaryCount = PrimaryCount + 1
+		If 0 < Candidate.Get("pk") Then PrimaryCount = PrimaryCount + 1
 	Next
 	If PrimaryCount <> 1 Then Return False
 	Dim DeclaredType As String = SafeUpper(Column.Get("type"))
@@ -1863,7 +1866,7 @@ Private Sub PrimaryKeyColumns (Columns As List) As List
 	Next
 	For KeyNumber = 1 To MaxKey
 		For Each Column As Map In Columns
-			If Column.Get("pk") = KeyNumber Then Primary.Add(Column.Get("name"))
+			If KeyNumber = Column.Get("pk") Then Primary.Add(Column.Get("name"))
 		Next
 	Next
 	Return Primary
@@ -1872,7 +1875,7 @@ End Sub
 Private Sub FindColumn (Columns As List, ColumnName As String) As Int
 	For i = 0 To Columns.Size - 1
 		Dim Column As Map = Columns.Get(i)
-		If Column.Get("name") = ColumnName Then Return i
+		If ColumnName = Column.Get("name") Then Return i
 	Next
 	Return -1
 End Sub
@@ -2072,9 +2075,9 @@ Private Sub AddSchemaSection (Parent As MiniHtml, TableName As String, Columns A
 		Dim ColumnType As String = Column.Get("type")
 		If ColumnType = Null Or ColumnType = "" Then ColumnType = "(untyped)"
 		Dim Nullable As String = "YES"
-		If Column.Get("notnull") = 1 Then Nullable = "NO"
+		If 1 = Column.Get("notnull") Then Nullable = "NO"
 		Dim KeyLabel As String = ""
-		If Column.Get("pk") > 0 Then KeyLabel = "PK " & Column.Get("pk")
+		If 0 < Column.Get("pk") Then KeyLabel = "PK " & Column.Get("pk")
 		AddText(Row, "td", "", Name)
 		AddText(Row, "td", "", ColumnType)
 		AddText(Row, "td", "", Nullable)
@@ -2087,7 +2090,7 @@ Private Sub AddSchemaSection (Parent As MiniHtml, TableName As String, Columns A
 		AddText(IndexSection, "h3", "", "Indexes")
 		For Each Index As Map In Indexes
 			Dim UniqueLabel As String = ""
-			If Index.Get("unique") = 1 Then UniqueLabel = " · unique"
+			If 1 = Index.Get("unique") Then UniqueLabel = " · unique"
 			AddText(IndexSection, "div", "schema-detail", Index.Get("name") & UniqueLabel & " · " & IndexOrigin(Index.Get("origin")))
 		Next
 	End If
@@ -2103,7 +2106,7 @@ End Sub
 
 Private Sub ForeignReference (ForeignKeys As List, ColumnName As String) As String
 	For Each Foreign As Map In ForeignKeys
-		If Foreign.Get("from") = ColumnName Then
+		If ColumnName = Foreign.Get("from") Then
 			Return Foreign.Get("table") & "." & Foreign.Get("to")
 		End If
 	Next
@@ -2196,6 +2199,7 @@ Private Sub ReadStats (Name As String) As Map
 		Try
 			If Db.IsInitialized Then Db.Close
 		Catch
+			Log(LastException.Message)
 		End Try
 	End Try
 	Return Result

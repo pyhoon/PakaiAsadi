@@ -23,6 +23,13 @@ The `java` on `PATH` in this environment is Java 8, which cannot load the Java 1
 
 Builder/API reference: [B4ABuilder / B4JBuilder command-line compilation](https://www.b4x.com/android/forum/threads/b4abuilder-b4jbuilder-command-line-compilation.50154/).
 
+The command-line builder does not print the B4J IDE's warnings, even with `-ShowWarnings=True` (a deliberately bad Object comparison still builds silently). Treat IDE warning numbers as guidance to audit by pattern, not as something the CLI verifies.
+
+## B4J coding conventions
+
+- B4J warning #35: put the `Object`-returning expression on the right side of a comparison so B4J compares by value. Write `If 1 = Column.Get("notnull") Then`, `If False = KeyResult.Get("ok") Then`, `If 0 < Column.Get("pk") Then`, and `If ColumnName = Column.Get("name") Then`; do not write the reversed forms. Apply the same rule to any variable or function result typed `As Object`.
+- Never leave a `Catch` block empty. Log `LastException.Message` (or deliberately set a safe fallback value), including cleanup helpers such as `CloseQuietly` and defensive `Db.Close` calls.
+
 ## Dependencies
 
 The builder resolves `#AdditionalJar` names from `C:\Program Files\B4X\B4J\libraries`. Ensure project `libs.json` dependencies are installed there before treating a missing-JAR build failure as a source error. Keep dependency versions consistent between `libs.json` and `#AdditionalJar` declarations.
@@ -45,6 +52,6 @@ The builder resolves `#AdditionalJar` names from `C:\Program Files\B4X\B4J\libra
 - `POST` is registered for the SQL workspace and row-edit routes only. Preserve the explicit `405` + `Allow` responses everywhere else.
 - `jSQL`'s `ResultSet` wrapper cannot expose metadata or distinguish BLOBs. Use `JavaObject`/JDBC for arbitrary SQL, `RunMethodJO` for object-returning Java calls, and `getBytes` for BLOB columns. Apply sanitized error text (`[SQLITE…` onward) and never show registered paths.
 - There is no enforced SQL query timeout in Xerial 3.53.2.1 (`setQueryTimeout` is a no-op), and returned values are materialized before preview caps. Do not claim otherwise; rely on host/proxy timeouts and trusted-admin access.
-- Keep source modules under `source/` synchronized with the corresponding demo host modules under `demo/` until the `.b4xlib` packaging workflow is established. Copy `source/AsadiHandler.bas`, `AsadiState.bas`, and `PakaiAsadi.bas` over the demo copies from the repository root after editing either side, then build both. Run verification steps in `tests/M1-checklist.md`, `tests/M2-checklist.md`, `tests/M3-checklist.md`, and `tests/M4-checklist.md` as applicable.
+- Keep source modules under `source/` synchronized with the corresponding demo host modules under `demo/` until the `.b4xlib` packaging workflow is established. Copy `source/AsadiHandler.bas`, `AsadiState.bas`, and `PakaiAsadi.bas` over the demo copies from the repository root after editing either side, then build both. Use explicit `Copy-Item -Path <source> -Destination <demo>` arguments; a comma-separated pair binds both paths to `-Path` and copies the files into the current directory instead. Run verification steps in `tests/M1-checklist.md`, `tests/M2-checklist.md`, `tests/M3-checklist.md`, and `tests/M4-checklist.md` as applicable.
 - Never run destructive verification against `demo/Objects/pakai.db`; use an isolated database copy. `tests/M2-fixture.sql` is for a disposable demo database and replaces its `people`/`teams` fixture objects.
 - The Lanyard demo's `#If Release` sets `App.ssl.Enabled = True`, and EndsMeet reads SSL settings from a `.env` bundled from `Files/`. Without one, HTTP requests redirect to `https://127.0.0.1:` with an empty port. For local HTTP testing, build with `App.ssl.Enabled = False` and restore `demo/demo.b4j` before committing. Run the demo jar from `demo/Objects` and keep its `sqlite.ini` pointing at a disposable database copy; running it from `demo/` creates stray `config.ini`, `sqlite.ini`, and `pakai.db` files there.
