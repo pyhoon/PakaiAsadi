@@ -71,6 +71,8 @@ Verification below used a temporary `App.ssl.Enabled = False` build, then restor
 | Submit a form after the row changed elsewhere | `409`, "This row changed after the form was loaded."; the other change is kept |
 | Submit a form after the row was deleted | `400`, "This row no longer exists." |
 | Delete a row | `302` to `...?notice=deleted`; the row is gone |
+| Click "Delete row" | A confirmation modal opens (CSS-only `:target` dialog, no scripts required); Cancel, the backdrop, or `#` closes it and submits nothing |
+| Confirm in the modal | Only the modal's "Delete row" button posts the `action=delete` form with the hidden key and originals |
 | Table without a primary key | Edit links are shown; rows are addressed by an unshadowed `rowid` alias and the page says so |
 | Table whose primary key contains a BLOB | No Edit links; direct edit URL returns `400`, "This table has no usable primary key or rowid and cannot be edited" |
 | Composite primary key | Key columns are hidden read-only fields (`fN`/`kN`); editing non-key columns works |
@@ -135,9 +137,9 @@ Promote a test account to `admin` only through a trusted provisioning step; `/re
 2026-10-28, B4JBuilder 10.70 / Java 19.0.2.
 
 - Both projects built successfully from the final M4 sources.
-- Standalone host, `source/data/demo.db` with the 61-row fixture: insert, update (including the NULL checkbox), and delete on `empty_table`; default and `NOT NULL` insert rules; rowid-table editing; BLOB-key and view rejection; composite-key editing; a stale form returning `409`; the CSRF matrix (missing, forged, mismatched, cross-site, cross-origin → `403`); the method matrix; CSV/JSON exports including BOM, quoting, base64 BLOBs, numeric JSON typing, the 10,000-row cap, and the 200-column `400`; `sqlite_master` and traversal returning `404`. Fixture afterward: 61 `people` rows, `empty_table` empty, row 7 still `Person 7`.
+- Standalone host, `source/data/demo.db` with the 61-row fixture: insert, update (including the NULL checkbox), and delete on `empty_table`; the delete confirmation modal opens and cancels without a request; default and `NOT NULL` insert rules; rowid-table editing; BLOB-key and view rejection; composite-key editing; a stale form returning `409`; the CSRF matrix (missing, forged, mismatched, cross-site, cross-origin → `403`); the method matrix; CSV/JSON exports including BOM, quoting, base64 BLOBs, numeric JSON typing, the 10,000-row cap, and the 200-column `400`; `sqlite_master` and traversal returning `404`. Fixture afterward: 61 `people` rows, `empty_table` empty, row 7 still `Person 7`.
 - Lanyard demo host on a disposable copy of `pakai.db`: unauthenticated requests redirected to `/login`; a role `user` account received `403` on all four Asadi routes; an `admin` account loaded the overview, table page, and edit page; an update (and restore), an insert and delete, and both exports succeeded; the CSRF cookie/field mismatch returned `403`.
-- Browser checks on the standalone host: table page shows Edit links, `+ New row`, and both export links; edit page shows `id · INTEGER · PRIMARY KEY`, `name · TEXT · required`, a read-only BLOB, NULL chips, and no horizontal overflow; the workspace badge reads `♙ Read and write`; no console errors.
+- Browser checks on the standalone host: table page shows Edit links, `+ New row`, and both export links; edit page shows `id · INTEGER · PRIMARY KEY`, `name · TEXT · required`, a read-only BLOB, NULL chips, and no horizontal overflow; "Delete row" opens the confirmation dialog and Cancel closes it without submitting; the workspace badge reads `♙ Read and write`; no console errors.
 - Demo host caveat: `#If Release` enables SSL, and without a bundled `.env`/keystore EndsMeet redirects HTTP to `https://127.0.0.1:`. The demo was verified with a temporary `App.ssl.Enabled = False` build; `demo.b4j` was restored and rebuilt afterwards.
 
 ## Known limitations
