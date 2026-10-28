@@ -59,7 +59,7 @@ Route registration will use the verified EndsMeet methods (GET only) and non-con
 
 1. B4JBuilder 10.70 is installed at `C:\Program Files\B4X\B4J\B4JBuilder.exe`; source and demo projects compile successfully with Java 19 using `-Task=Build -NoClean=True -ShowWarnings=True`.
 2. Verify MiniORMUtils 6.04's `Open`/`Close` behavior, SQLite `query_only` enforcement, paths containing spaces/Unicode, and no-create behavior with the installed Xerial 3.53.2.1 in the actual B4J runtime.
-3. The host authentication and CSRF integration remains application-specific. Browser pages are GET-only; the M3 SQL workspace is the only POST route and is protected by a `Sec-Fetch-Site`/`Origin` check against `Host`, with the host admin gate still required on every request. Configure an explicit host admin gate before exposure.
+3. The host authentication and CSRF integration remains application-specific. Reads use GET; `POST` exists only on the SQL workspace and row-edit routes. Both POST routes require a `Sec-Fetch-Site`/`Origin` check against `Host`, and row edits additionally require the signed CSRF cookie/field pair described in the M4 note. The host admin gate is still required on every request. Configure an explicit host admin gate before exposure.
 4. EndsMeet has no public route removal method, so runtime uninstall after registration is unsupported; opt-out is before `App.Start`.
 
 ## M1 implementation note (2026-10-27)
@@ -97,6 +97,27 @@ M1/M2/M3 remaining limitations:
 
 - The component still references the host main module (`Main`) for its authorization callback. A `BuildLibrary` attempt therefore fails with "Cannot access excluded module: main". M5 packaging will need an adapter contract that does not reference the main module, or must ship the handler/state modules outside the library with host wiring. Both normal B4J Build tasks succeed.
 - The demo's Lanyard authentication stores/compares plaintext passwords; it is a host sample, not a production authentication implementation.
-- Editing, exports, and a packaged `.b4xlib` do not exist yet. The SQL workspace is read-only. There is no CSRF token; writes will require one when M4 adds them.
+- At M3, editing, exports, and a packaged `.b4xlib` did not exist and there was no CSRF token. M4 adds editing, exports, and CSRF (see the M4 note below); packaging remains open. The SQL workspace is still read-only.
 - The installed Xerial driver accepts `Statement.setQueryTimeout` but does not enforce it. A runaway query holds its request thread until SQLite finishes; there is no cancellation path. The driver also materializes each returned BLOB/text value before the display cap, so large values can consume memory even though the page keeps only previews. Restrict the workspace to trusted administrators and apply host/proxy timeouts.
 - Search performs a parameterized `LIKE` scan over up to 50 non-BLOB columns; there is no FTS index or query timeout. It is appropriate for an admin tool on bounded databases, not as a public search endpoint.
+
+## M4 implementation note (2026-10-28)
+
+M4 adds CSRF-protected row editing and CSV/JSON exports while keeping the SQL workspace read-only.
+
+CSRF uses a signed double-submit token: a random 16-byte nonce plus an HMAC-SHA256 signature over it, keyed by a per-process secret generated with `SecureRandom` and stored as base64url. The token is written to the `asadi_csrf` cookie (`Path=<base>`, `Max-Age=28800`, `HttpOnly`, `SameSite=Strict`, `Secure` only when the request is secure) and into a hidden `csrf` field. A write is accepted only when the field equals the cookie, the signature verifies, and the request is same-origin by `Sec-Fetch-Site` (`same-origin` or `none`) or, when that header is absent, by comparing the `Origin` host with `Host`. `Origin: null` is allowed for the preview proxy; the host admin gate remains authoritative.
+
+Editing uses the existing `open_mode=2` JDBC handle. A key plan prefers declared primary-key columns and otherwise uses the first unshadowed `rowid` alias (`_rowid_`, `rowid`, `oid`). BLOB keys and tables that shadow all three aliases are not editable; views, BLOB columns, and primary-key values are read-only in the form. Insert skips blank integer primary keys, blank columns with declared defaults, and blank numeric columns (so they store `NULL` rather than text), and rejects a blank `NOT NULL` numeric column without a default. Update and delete carry hidden original values for every non-key, non-BLOB column and append `col IS ?` predicates; an affected-row count of zero returns `409` when the row still exists and `400` when it does not. All writes are single-row and parameterized.
+
+Exports are GET-only `SELECT *` reads over `open_mode=1`, capped at 10,000 rows and 200 columns. CSV writes a UTF-8 BOM, quotes every field, doubles embedded quotes, uses CRLF, emits `NULL` as an empty field and BLOBs as `base64:...`, and prefixes formula-leading characters with an apostrophe while leaving numeric signs intact. JSON emits an array of row objects with `null`, unquoted numbers for numeric JDBC types whose text matches a number, quoted strings otherwise, and `base64:...` BLOBs. The NUMERIC/DECIMAL JDBC types are included because SQLite `NUMERIC` columns hold real numbers in the demo schema; stored text in those columns remains quoted.
+
+`PakaiAsadi.Start` still registers only `GET <base>`, `GET <base>/*`, and `POST <base>/*`; the handler accepts `POST` on `/sql` and `/edit` and returns `405` with `Allow` elsewhere, including `/export`.
+
+Verified on 2026-10-28 against the disposable fixture and a disposable copy of the Lanyard host's `pakai.db`: insert/update/delete with and without the NULL checkbox, default and `NOT NULL` insert rules, rowid and composite-key editing, BLOB-key/view rejection, stale-form `409`, the CSRF matrix (missing, forged, mismatched, cross-site, cross-origin → `403`), cookie flags, the method matrix, CSV BOM/quoting/base64/formula neutralization, JSON `null`/numeric typing in a `NUMERIC` column, the 10,000-row and 200-column caps, and the authorization split (unauthenticated `302` to `/login`, role `user` `403`, role `admin` `200`). Steps are in `tests/M4-checklist.md`.
+
+M4 limitations add to the list above:
+
+- The demo's `#If Release` sets `App.ssl.Enabled = True`; EndsMeet's SSL settings come from a `.env` bundled from `Files/`, which the demo does not ship, so HTTP requests redirect to `https://127.0.0.1:` with an empty port. Add a `.env`/keystore or build locally with SSL disabled.
+- Editing is table-only, one row per request, with no schema editor or bulk mode. Optimistic conflict detection compares values; it has no version counter, so a concurrent change that restores identical values is invisible.
+- CSV cannot represent `NULL` distinctly from an empty string. Exports materialize every value before writing and have no enforced statement timeout.
+- The packaged `.b4xlib` remains M5 work.
