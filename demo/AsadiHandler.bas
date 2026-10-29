@@ -1210,13 +1210,6 @@ Private Sub ValidateEditValue (Column As Map, Value As String, NullRequested As 
 	Return ""
 End Sub
 
-Private Sub FieldValue (req As ServletRequest, Index As Int) As Object
-	If req.GetParameter("n" & Index) = "1" Then Return Null
-	Dim Value As String = req.GetParameter("f" & Index)
-	If Value = Null Then Return ""
-	Return Value
-End Sub
-
 Private Sub IsNumericType (DeclaredType As String) As Boolean
 	Dim UpperType As String = DeclaredType.ToUpperCase
 	Return UpperType.Contains("INT") Or UpperType.Contains("REAL") Or UpperType.Contains("NUM") Or _
@@ -1734,7 +1727,7 @@ Private Sub WriteTablePage (resp As ServletResponse, DbName As String, TableName
 	If Editable Then AddText(Content, "p", "info-note", "Updates and deletes are checked against the row values loaded into the form; a stale form is rejected instead of overwriting newer data.")
 	If Columns.Size > MAX_DATA_COLUMNS Then AddText(Content, "p", "info-note", "Showing the first " & MAX_DATA_COLUMNS & " of " & Columns.Size & " columns in the data grid.")
 	If Columns.Size > MAX_SEARCH_COLUMNS Then AddText(Content, "p", "info-note", "Search checks at most the first " & MAX_SEARCH_COLUMNS & " non-BLOB columns.")
-	AddSchemaSection(Content, TableName, Columns, ForeignKeys, Indexes, Definition, IsView)
+	AddSchemaSection(Content, Columns, ForeignKeys, Indexes, Definition)
 	AddSearchForm(Content, DbName, TableName, SearchText)
 	Dim Grid As MiniHtml = NewTag(Content, "div", "table-scroll")
 	Dim DataGrid As MiniHtml = NewTag(Grid, "table", "data-grid")
@@ -2071,7 +2064,7 @@ Private Sub EncodeQuery (Value As String) As String
 	Return Encoded.Replace("+", "%20")
 End Sub
 
-Private Sub AddSchemaSection (Parent As MiniHtml, TableName As String, Columns As List, ForeignKeys As List, Indexes As List, Definition As String, IsView As Boolean)
+Private Sub AddSchemaSection (Parent As MiniHtml, Columns As List, ForeignKeys As List, Indexes As List, Definition As String)
 	Dim Section As MiniHtml = NewTag(Parent, "details", "objects schema-section")
 	Dim Summary As MiniHtml = NewTag(Section, "summary", "section-head")
 	Summary.text("Structure · " & Columns.Size & " columns")
