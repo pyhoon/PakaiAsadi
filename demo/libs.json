@@ -2,6 +2,12 @@
     "Version": "6.99",
     "Libraries": [
         {
+            "Name": "PakaiAsadi.b4xlib",
+            "Platform": "B4J",
+            "Version": 1.00,
+            "Link": "https://github.com/pyhoon/PakaiAsadi/releases/download/v1.00/PakaiAsadi.b4xlib"
+        },
+        {
             "Name": "EndsMeet.b4xlib",
             "Platform": "B4J",
             "Version": 4.03,
