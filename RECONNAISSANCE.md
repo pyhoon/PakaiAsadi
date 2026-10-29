@@ -95,9 +95,9 @@ Verified on 2026-10-28 against the disposable fixture: form GET, typed grids for
 
 M1/M2/M3 remaining limitations:
 
-- The component still references the host main module (`Main`) for its authorization callback. A `BuildLibrary` attempt therefore fails with "Cannot access excluded module: main". M5 packaging will need an adapter contract that does not reference the main module, or must ship the handler/state modules outside the library with host wiring. Both normal B4J Build tasks succeed.
+- The authorization callback was originally referenced as the module identifier `Main`, which made `BuildLibrary` fail with "Cannot access excluded module: main". M5 resolves it through the string constant `AsadiState.HostModule = "Main"`; both normal B4J Build tasks and `-Task=BuildLibrary` succeed.
 - The demo's Lanyard authentication stores/compares plaintext passwords; it is a host sample, not a production authentication implementation.
-- At M3, editing, exports, and a packaged `.b4xlib` did not exist and there was no CSRF token. M4 adds editing, exports, and CSRF (see the M4 note below); packaging remains open. The SQL workspace is still read-only.
+- At M3, editing, exports, and a packaged `.b4xlib` did not exist and there was no CSRF token. M4 adds editing, exports, and CSRF (see the M4 note below); M5 adds packaging (see the M5 note below). The SQL workspace is still read-only.
 - The installed Xerial driver accepts `Statement.setQueryTimeout` but does not enforce it. A runaway query holds its request thread until SQLite finishes; there is no cancellation path. The driver also materializes each returned BLOB/text value before the display cap, so large values can consume memory even though the page keeps only previews. Restrict the workspace to trusted administrators and apply host/proxy timeouts.
 - Search performs a parameterized `LIKE` scan over up to 50 non-BLOB columns; there is no FTS index or query timeout. It is appropriate for an admin tool on bounded databases, not as a public search endpoint.
 
@@ -120,4 +120,18 @@ M4 limitations add to the list above:
 - The demo's `#If Release` sets `App.ssl.Enabled = True`; EndsMeet's SSL settings come from a `.env` bundled from `Files/`, which the demo does not ship, so HTTP requests redirect to `https://127.0.0.1:` with an empty port. Add a `.env`/keystore or build locally with SSL disabled.
 - Editing is table-only, one row per request, with no schema editor or bulk mode. Optimistic conflict detection compares values; it has no version counter, so a concurrent change that restores identical values is invisible.
 - CSV cannot represent `NULL` distinctly from an empty string. Exports materialize every value before writing and have no enforced statement timeout.
-- The packaged `.b4xlib` remains M5 work.
+- M5 packages the already-verified modules; it adds no runtime feature. See the M5 note below.
+
+## M5 implementation note (2026-10-29)
+
+M5 ships the same handler, state, and public class as a `.b4xlib`. The host callback is no longer referenced through the `Main` module identifier, which `BuildLibrary` treats as an excluded module. `AsadiState.HostModule` holds the string `"Main"` (B4J always names the main code module that way), and both `SubExists` and `CallSub2` resolve it at runtime. A probe confirmed that `SubExists("Main", "Ping")` and `CallSub2("Main", "Ping", ...)` behave like the module-identifier forms.
+
+`B4JBuilder 10.70 -Task=BuildLibrary` compiles the non-main modules and requires `#LibraryName`, but writes no jar, XML, or `.b4xlib` despite printing the corresponding steps. `tools/package-b4xlib.ps1` therefore runs the library build and then creates the archive: a plain zip containing `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, and `manifest.txt` at its root. `manifest.txt` declares `Author=Aeric Poon`, `Version=1.00`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, and `Supported Platforms=B4J`. `#LibraryName`/`#LibraryVersion`/`#LibraryAuthor` in `source/Pakai-Asadi.b4j` mirror the manifest, and the script refuses a mismatch or a source/demo drift.
+
+Verified on 2026-10-29: the library build succeeds; the archive is created with the four expected entries; and a scratch copy of the source host with the three Asadi modules deleted builds against `Library2=pakaiasadi` alone, starts on port 8080, and passes the 31-check smoke suite and 6-check edge suite. A further build listing only `jcore` and `pakaiasadi` also succeeded, which shows the manifest's `B4J.DependsOn` resolves EndsMeet, MiniHTML, MiniORMUtils, and the `sqlite-jdbc` jar (the merged jar contains `org/sqlite`). Steps are in `tests/M5-checklist.md`.
+
+M5 limitations:
+
+- The package contains source modules only; consumers need B4J 10.7+ and the dependency versions in `libs.json`.
+- The archive is generated, not committed; run the script after changing a library module.
+- Only one Asadi instance can be configured per host process, and the host's main authorization sub must exist before `Initialize` and `Start` succeed.

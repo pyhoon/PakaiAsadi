@@ -1,0 +1,4 @@
+Author=Aeric Poon
+Version=1.00
+B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc
+Supported Platforms=B4J

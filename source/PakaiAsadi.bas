@@ -1,4 +1,4 @@
-﻿B4J=true
+B4J=true
 Group=Classes
 ModulesStructureVersion=1
 Type=Class
@@ -31,7 +31,7 @@ Public Sub Initialize (HostApp As EndsMeet, AllowedDirectory As String, Authoriz
 	mApp = HostApp
 	mBasePath = "/asadi"
 	mAuthorizationSub = AuthorizationSub.Trim
-	If mAuthorizationSub = "" Or SubExists(Main, mAuthorizationSub) = False Then
+	If mAuthorizationSub = "" Or SubExists(AsadiState.HostModule, mAuthorizationSub) = False Then
 		Log("PakaiAsadi: missing host authorization sub; Asadi routes will not be registered")
 		Return
 	End If
@@ -98,7 +98,7 @@ End Sub
 
 Public Sub Start As Boolean
 	If mInitialized = False Or mStarted Or mConfigurationValid = False Then Return False
-	If SubExists(Main, mAuthorizationSub) = False Then Return False
+	If SubExists(AsadiState.HostModule, mAuthorizationSub) = False Then Return False
 	If HasRouteCollision Then
 		Log("PakaiAsadi: configured BasePath overlaps an existing EndsMeet route")
 		Return False

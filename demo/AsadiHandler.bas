@@ -36,16 +36,17 @@ Sub Handle (req As ServletRequest, resp As ServletResponse)
 		WriteError(resp, 503, "Administration module is unavailable")
 		Return
 	End If
-	If SubExists(Main, AsadiState.AuthorizationSub) = False Then
+	If SubExists(AsadiState.HostModule, AsadiState.AuthorizationSub) = False Then
 		WriteError(resp, 403, "Administration access is not configured")
 		Return
 	End If
 	Dim Authorized As Boolean = False
 	Try
-		Dim GateResult As Object = CallSub2(Main, AsadiState.AuthorizationSub, req)
+		Dim GateResult As Object = CallSub2(AsadiState.HostModule, AsadiState.AuthorizationSub, req)
 		If GateResult Is Boolean Then Authorized = GateResult
 	Catch
 		Authorized = False
+		Log("Pakai Asadi: authorization check failed: " & LastException.Message)
 	End Try
 	If Authorized = False Then
 		WriteError(resp, 403, "You are not authorized to administer databases")

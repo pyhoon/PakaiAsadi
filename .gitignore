@@ -3,8 +3,10 @@ demo/Objects/
 demo/AutoBackups/
 source/Objects/
 source/logs/
+source/AutoBackups/
 demo/logs/
 *.db
 *.db-shm
 *.db-wal
 *.b4j.meta
+dist/

@@ -1,26 +1,29 @@
-﻿AppType=StandardJava
+AppType=StandardJava
 Build1=Default,b4j.pakai,hu2_acceptall
 Group=App
 Library1=endsmeet
 Library2=jcore
-Library3=javaobject
-Library4=jsql
-Library5=minihtml
-Library6=miniormutils
+Library3=minihtml
+Library4=miniormutils
 Module1=AsadiHandler
 Module2=AsadiState
 Module3=DemoHomeHandler
 Module4=PakaiAsadi
 NumberOfFiles=0
-NumberOfLibraries=6
+NumberOfLibraries=4
 NumberOfModules=4
 Version=10.7
 @EndOfDesignText@
 #Region Project Attributes
-' Pakai Asadi M1 — embedded SQLite overview and local demo host
+' Pakai Asadi - embeddable SQLite workspace for B4J.
+' The library build excludes this main module, so the attributes below describe the
+' packaged .b4xlib; the module itself stays a runnable demo host.
 #CommandLineArgs:
 #MergeLibraries: True
 #AdditionalJar: sqlite-jdbc
+#LibraryName: PakaiAsadi
+#LibraryVersion: 1.00
+#LibraryAuthor: Aeric Poon
 #End Region
 Sub Process_Globals
 	Public App As EndsMeet
@@ -28,6 +31,7 @@ Sub Process_Globals
 	Private DemoDirectory As String
 End Sub
 
+' <link>Open in browser|http://127.0.0.1:8080</link> | <link>Donate|https://paypal.me/aeric80/</link>
 Sub AppStart (Args() As String)
 	App.Initialize
 	App.Port = 8080

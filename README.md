@@ -2,17 +2,19 @@
 
 Pakai Asadi is an embedded SQLite administration component for B4J. It registers handlers on the host's existing EndsMeet server; it never starts a separate server.
 
-## Status (M1-M4)
+## Status (M1-M5)
 
-This checkout contains the B4J source project and local demo hosts under `source/` and `demo/`:
+This checkout contains the B4J source project, local demo hosts under `source/` and `demo/`, and the packaging tooling for the library:
 
 - `PakaiAsadi.bas` - public configuration, explicit database allowlist and route registration.
-- `AsadiState.bas` - request-shared module state, including the per-process CSRF secret.
+- `AsadiState.bas` - request-shared module state, including the per-process CSRF secret and the host module name.
 - `AsadiHandler.bas` - fail-closed host gate, MiniORMUtils-managed SQLite connections, MiniHTML-rendered pages, schema-object detail pages, the table/view browser, the read-only SQL workspace, CSRF-protected row editing, and CSV/JSON exports.
-- `Pakai-Asadi.b4j` - demo host, configured to listen on port 8080 and serve both `/` and `/asadi` from one EndsMeet instance.
+- `Pakai-Asadi.b4j` - demo host, configured to listen on port 8080 and serve both `/` and `/asadi` from one EndsMeet instance; its project attributes also describe the packaged library.
+- `manifest.txt` - author, version, dependencies, and supported platform for the `.b4xlib`.
+- `tools/package-b4xlib.ps1` - runs the library build and assembles `dist/PakaiAsadi.b4xlib`.
 - `libs.json` - EndsMeet 4.03 and Xerial SQLite JDBC 3.53.2.1, matching the driver installed in the current B4J environment.
 
-Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compile with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The standalone `source` host was launched on 2026-10-28 and its M1-M4 pages and write paths were exercised against a disposable SQLite file; the Lanyard demo host was exercised separately on a disposable copy of `pakai.db`. See [tests/M2-checklist.md](tests/M2-checklist.md), [tests/M3-checklist.md](tests/M3-checklist.md), and [tests/M4-checklist.md](tests/M4-checklist.md). The Lanyard host flow remains application-specific and is covered by [tests/M1-checklist.md](tests/M1-checklist.md). A compiled Asadi `.b4xlib` has not been generated.
+Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compile with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The standalone `source` host was launched on 2026-10-28 and its M1-M4 pages and write paths were exercised against a disposable SQLite file; the Lanyard demo host was exercised separately on a disposable copy of `pakai.db`. See [tests/M2-checklist.md](tests/M2-checklist.md), [tests/M3-checklist.md](tests/M3-checklist.md), and [tests/M4-checklist.md](tests/M4-checklist.md). The Lanyard host flow remains application-specific and is covered by [tests/M1-checklist.md](tests/M1-checklist.md). The packaged `.b4xlib` was built and consumed by a host project that contained none of the Asadi modules; M5 checks are in [tests/M5-checklist.md](tests/M5-checklist.md).
 
 ## Public API
 
@@ -33,6 +35,19 @@ App.Start
 `Initialize` requires an existing allowed directory and the name of a host-module Boolean function with signature `AuthorizeAsadi(req As ServletRequest) As Boolean`. Missing or failing authorization denies requests. `AddDatabase` accepts only an already existing readable file inside that directory; names are restricted to ASCII letters/digits/underscore/hyphen (starting with a letter). The database path is never accepted from an HTTP request. `Start` registers the workspace routes on the host's EndsMeet instance; it does not start a listener. It rejects a prefix that overlaps a route already present in `App.routes`.
 
 The Pakai demo uses Lanyard's global `AuthFilter` for session authentication and an additional `Main.AuthorizeAsadi` check requiring the session's `role` to equal `admin`. Newly registered Lanyard accounts default to role `user`; promote a trusted account to `admin` through the host's authorized provisioning process before testing the workspace. Do not make self-registration confer admin access. The Asadi handler repeats the role gate on every request; the global login filter alone is not the admin authorization policy.
+
+## Install the library
+
+Build the package and copy it into the B4J additional libraries folder:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\package-b4xlib.ps1
+Copy-Item -LiteralPath dist\PakaiAsadi.b4xlib -Destination C:\B4X\Additional\B4J\
+```
+
+Restart B4J, then add `PakaiAsadi` to the host project's libraries. The archive contains `AsadiHandler`, `AsadiState`, and `PakaiAsadi` plus `manifest.txt`; it does not include the demo `main` or `DemoHomeHandler`. Its `B4J.DependsOn` entry names EndsMeet, MiniHTML, MiniORMUtils, and `sqlite-jdbc`, so B4J resolves those libraries and the JDBC driver; a project that manages libraries manually should add them explicitly and keep `#AdditionalJar: sqlite-jdbc`.
+
+The host supplies the authorization sub in its main code module. B4J always names that module `Main`, and the library resolves it by name so the callback is reachable from an `.b4xlib`. Call the public API from `AppStart` before `App.Start`. The library never starts a listener, never creates a database, and refuses to register routes when the callback is missing. Only one Asadi instance can be configured per host process.
 
 ## Current UI and safeguards
 
@@ -94,7 +109,7 @@ The source reconnaissance and plug-in library evaluation (Lanyard, Vest, Watch) 
 
 ## Known limitations
 
-M4 implements row editing, CSV/JSON exports, and CSRF-protected write routes. M5 still needs the packaged `.b4xlib`; `-Task=BuildLibrary` currently fails with `Cannot access excluded module: main` because the handler resolves the host's authorization callback through `Main`. Editing is table-only and one row per request; primary-key and BLOB values are read-only, and views cannot be edited. Exports are capped at 10,000 rows and 200 columns and are not a backup/replication tool. Conflict detection is an optimistic value comparison, not a version counter. The SQL workspace has no enforced query timeout, and both the SQL grid and exports materialize each value before their size caps. Only one Asadi instance can be configured per host process because handler state is module-level. Host authentication and authorization remain the integrating application's responsibility; the included Lanyard demo uses plaintext password comparison and must not be deployed as-is. See the reconnaissance report for integration and dependency caveats.
+M1-M5 are implemented: row editing, CSV/JSON exports, CSRF-protected write routes, and the packaged `.b4xlib`. Editing is table-only and one row per request; primary-key and BLOB values are read-only, and views cannot be edited. Exports are capped at 10,000 rows and 200 columns and are not a backup/replication tool. Conflict detection is an optimistic value comparison, not a version counter. The SQL workspace has no enforced query timeout, and both the SQL grid and exports materialize each value before their size caps. Only one Asadi instance can be configured per host process because handler state is module-level. Host authentication and authorization remain the integrating application's responsibility; the included Lanyard demo uses plaintext password comparison and must not be deployed as-is. See the reconnaissance report for integration and dependency caveats.
 
 ## License
 

@@ -1,4 +1,4 @@
-﻿B4J=true
+B4J=true
 Group=Modules
 ModulesStructureVersion=1
 Type=Code
@@ -14,6 +14,10 @@ Sub Process_Globals
 	Public Configured As Boolean
 	' Random per-process key used to sign CSRF tokens. A restart invalidates outstanding tokens.
 	Public CsrfSecret As String
+	' B4J always names the host's main code module "Main". Resolving it by name keeps the
+	' authorization callback reachable when these modules are compiled into a library,
+	' where a direct Main reference is rejected as an excluded module.
+	Public Const HostModule As String = "Main"
 End Sub
 
 Public Sub InitializeState (HostApp As EndsMeet, Prefix As String, AllowedDir As String, AuthSub As String)
