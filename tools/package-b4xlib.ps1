@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds the Pakai Asadi library and packages it as dist/PakaiAsadi.b4xlib.
+    Builds the Pakai Asadi library and packages it as release/PakaiAsadi.b4xlib.
 
 .DESCRIPTION
     Runs B4JBuilder with -Task=BuildLibrary (which excludes the main module and
@@ -12,7 +12,7 @@
     manifest.txt at its root.
 
 .PARAMETER OutputPath
-    Archive to create. Defaults to <repo>\dist\PakaiAsadi.b4xlib.
+    Archive to create. Defaults to <repo>\release\PakaiAsadi.b4xlib.
 
 .PARAMETER BuilderPath
     B4JBuilder.exe location.
@@ -38,7 +38,7 @@ $sourceDir = Join-Path $repoRoot 'source'
 $demoDir = Join-Path $repoRoot 'demo'
 $projectPath = Join-Path $sourceDir 'Pakai-Asadi.b4j'
 $manifestPath = Join-Path $sourceDir 'manifest.txt'
-if ($OutputPath -eq '') { $OutputPath = Join-Path $repoRoot 'dist\PakaiAsadi.b4xlib' }
+if ($OutputPath -eq '') { $OutputPath = Join-Path $repoRoot 'release\PakaiAsadi.b4xlib' }
 $OutputPath = [System.IO.Path]::GetFullPath($OutputPath)
 
 # Only these modules ship. main and DemoHomeHandler are demo-host code.

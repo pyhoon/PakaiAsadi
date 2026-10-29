@@ -25,12 +25,12 @@ If you received a release archive, skip the build command and copy that file int
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\package-b4xlib.ps1
 ```
 
-That writes `dist/PakaiAsadi.b4xlib`.
+That writes `release/PakaiAsadi.b4xlib`.
 
 Copy it into the B4J additional libraries folder, then restart B4J:
 
 ```powershell
-Copy-Item -LiteralPath dist\PakaiAsadi.b4xlib -Destination C:\B4X\Additional\B4J\
+Copy-Item -LiteralPath release\PakaiAsadi.b4xlib -Destination C:\B4X\Additional\B4J\
 ```
 
 In the IDE, open **Libraries** and tick **PakaiAsadi**. Keep EndsMeet, MiniHTML, and MiniORMUtils ticked; `sqlite-jdbc` is resolved from the library manifest. The archive contains `AsadiHandler`, `AsadiState`, and `PakaiAsadi`; you do not copy any `.bas` files into your project.

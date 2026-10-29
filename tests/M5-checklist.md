@@ -29,13 +29,13 @@ These checks cover the `.b4xlib` build, its manifest, and consumption from a hos
    manifest.txt
    ```
 
-4. Copy `dist/PakaiAsadi.b4xlib` to `C:\B4X\Additional\B4J\` for the consumer build, then remove it after testing.
+4. Copy `release/PakaiAsadi.b4xlib` to `C:\B4X\Additional\B4J\` for the consumer build, then remove it after testing.
 
 ## Packaging
 
 | Case | Expected |
 |---|---|
-| Run the script with a clean `source/` and `demo/` | `BuildLibrary` ends with `Completed successfully`; `dist/PakaiAsadi.b4xlib` is created |
+| Run the script with a clean `source/` and `demo/` | `BuildLibrary` ends with `Completed successfully`; `release/PakaiAsadi.b4xlib` is created |
 | Inspect the archive | Only the three library modules plus `manifest.txt`; `main` and `DemoHomeHandler` are absent |
 | Read `manifest.txt` | `Author=Aeric Poon`, `Version=1.00`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, `Supported Platforms=B4J` |
 | Compare `#LibraryVersion` in `source/Pakai-Asadi.b4j` with the manifest | Equal; the script rejects a mismatch |
@@ -83,7 +83,7 @@ A stronger dependency check: keep only `Library1=jcore` and `Library2=pakaiasadi
 2026-10-29, B4JBuilder 10.70 / Java 19.0.2.
 
 - `source/Pakai-Asadi.b4j` and `demo/demo.b4j` built successfully after the `AsadiState.HostModule` change.
-- `tools/package-b4xlib.ps1` ran `-Task=BuildLibrary` successfully and created `dist/PakaiAsadi.b4xlib` with the four expected entries.
+- `tools/package-b4xlib.ps1` ran `-Task=BuildLibrary` successfully and created `release/PakaiAsadi.b4xlib` with the four expected entries.
 - A scratch host containing none of the three Asadi modules, with `Library5=pakaiasadi`, built and ran on port 8080 against a disposable copy of `source/data/demo.db`. The 31-check smoke suite (dashboard, table, edit, insert/update/delete, CSRF negatives, index detail, SQL) and the 6-check edge suite (SQL rejection, SQL error surfacing, `NOT NULL` rejection) passed.
 - A second scratch host listing only `jcore` and `pakaiasadi`, without `#AdditionalJar: sqlite-jdbc`, also built and passed both suites. Its `result.jar` contained `org/sqlite/JDBC.class`.
 - The test install was removed from `C:\B4X\Additional\B4J` afterwards. `source/data/demo.db` remained at 61 `people` rows with row 7 still `Person 7`.

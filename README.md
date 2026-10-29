@@ -13,7 +13,7 @@ This checkout contains the B4J source project, local demo hosts under `source/` 
 - `AsadiHandler.bas` - fail-closed host gate, MiniORMUtils-managed SQLite connections, MiniHTML-rendered pages, schema-object detail pages, the table/view browser, the read-only SQL workspace, CSRF-protected row editing, and CSV/JSON exports.
 - `Pakai-Asadi.b4j` - demo host, configured to listen on port 8080 and serve both `/` and `/asadi` from one EndsMeet instance; its project attributes also describe the packaged library.
 - `manifest.txt` - author, version, dependencies, and supported platform for the `.b4xlib`.
-- `tools/package-b4xlib.ps1` - runs the library build and assembles `dist/PakaiAsadi.b4xlib`.
+- `tools/package-b4xlib.ps1` - runs the library build and assembles `release/PakaiAsadi.b4xlib`.
 - `libs.json` - EndsMeet 4.03 and Xerial SQLite JDBC 3.53.2.1, matching the driver installed in the current B4J environment.
 
 Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compile with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The standalone `source` host was launched on 2026-10-28 and its M1-M4 pages and write paths were exercised against a disposable SQLite file; the Lanyard demo host was exercised separately on a disposable copy of `pakai.db`. See [tests/M2-checklist.md](tests/M2-checklist.md), [tests/M3-checklist.md](tests/M3-checklist.md), and [tests/M4-checklist.md](tests/M4-checklist.md). The Lanyard host flow remains application-specific and is covered by [tests/M1-checklist.md](tests/M1-checklist.md). The packaged `.b4xlib` was built and consumed by a host project that contained none of the Asadi modules; M5 checks are in [tests/M5-checklist.md](tests/M5-checklist.md).
@@ -44,7 +44,7 @@ Build the package and copy it into the B4J additional libraries folder:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\package-b4xlib.ps1
-Copy-Item -LiteralPath dist\PakaiAsadi.b4xlib -Destination C:\B4X\Additional\B4J\
+Copy-Item -LiteralPath release\PakaiAsadi.b4xlib -Destination C:\B4X\Additional\B4J\
 ```
 
 Restart B4J, then add `PakaiAsadi` to the host project's libraries. The archive contains `AsadiHandler`, `AsadiState`, and `PakaiAsadi` plus `manifest.txt`; it does not include the demo `main` or `DemoHomeHandler`. Its `B4J.DependsOn` entry names EndsMeet, MiniHTML, MiniORMUtils, and `sqlite-jdbc`, so B4J resolves those libraries and the JDBC driver; a project that manages libraries manually should add them explicitly and keep `#AdditionalJar: sqlite-jdbc`.
