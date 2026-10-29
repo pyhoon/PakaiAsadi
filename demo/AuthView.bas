@@ -5,120 +5,153 @@ Type=Class
 Version=10.7
 @EndOfDesignText@
 ' Auth View
-' Version 0.30
+' Version 7.00
+' Login and registration pages built with PakaiUI components and the shared
+' Asadi authentication layout from pakaiui-asadi.css.
 Sub Class_Globals
-	Private App As EndsMeet
+	Private Const BootstrapVersion As String = "5.3.8"
+	Private Const IconsVersion As String = "1.13.1"
 End Sub
 
 Public Sub Initialize
-	App = Main.App
-End Sub
-
-Private Sub ExistInCache (Key As String) As Boolean
-	Return App.ctx.ContainsKey(Key)
-End Sub
-
-Private Sub ReadFromCache (Key As String) As Object
-	Dim Value As Object = App.ctx.Get(Key)
-	If Value Is MiniHtml Then
-		Return Value.As(MiniHtml)
-	Else If GetType(Value) = "[B" Then
-		Return MH.ConvertFromBytes(Value)
-	Else
-		Return Value
-	End If
-End Sub
-
-Private Sub WriteToCache (Key As String, Value As Object)
-	App.ctx.Put(Key, Value)
+	
 End Sub
 
 Public Sub Login (Message As String) As MiniHtml
-	Dim CacheName As String = "Login"
-	If ExistInCache(CacheName) = False Then
-		WriteToCache(CacheName, ContainerLogin)
-	End If
-	Dim div1 As MiniHtml = ReadFromCache(CacheName)
-	Dim div2 As MiniHtml = div1.ChildById("alert")
-	If Message = "" Then
-		div2.sty("display: none").replace("")
-	Else
-		div2.sty("display: block").replace(Message)
-	End If
-	Return div1
+	Return AuthPage("Login", "Sign in to the Pakai Asadi workspace.", "WELCOME BACK", Message, _
+		LoginForm, "Don't have an account?", "Register here", "/register")
 End Sub
 
 Public Sub Register (Message As String) As MiniHtml
-	Dim CacheName As String = "Register"
-	If ExistInCache(CacheName) = False Then
-		WriteToCache(CacheName, ContainerRegister)
-	End If
-	Dim div1 As MiniHtml = ReadFromCache(CacheName)
-	Dim div2 As MiniHtml = div1.ChildById("alert")
-	If Message = "" Then
-		div2.sty("display: none").replace("")
-	Else
-		div2.sty("display: block").replace(Message)
-	End If
-	Return div1
+	Return AuthPage("Create account", "Start managing your SQLite workspace.", "GET STARTED", Message, _
+		RegisterForm, "Already have an account?", "Login here", "/login")
 End Sub
 
-Private Sub ContainerLogin As MiniHtml
-	Dim div1 As MiniHtml = MH.Div.cls("container mt-1")
-	Dim row1 As MiniHtml = MH.Div.up(div1).cls("row justify-content-center")
-	Dim col1 As MiniHtml = MH.Div.up(row1).cls("col-md-4")
-	Dim card1 As MiniHtml = MH.Div.up(col1).cls("card shadow")
-	Dim header1 As MiniHtml = MH.Div.up(card1).cls("card-header bg-primary text-white text-center")
-	MH.H3.up(header1).text("Login")
-	Dim body1 As MiniHtml = MH.Div.up(card1).cls("card-body")
-	MH.Div.up(body1).cls("alert alert-danger").sty("display: none").attr("id", "alert")
-	Dim form1 As MiniHtml = MH.Form.up(body1).attr("method", "POST").attr("action", "/login")
-	
-	Dim group1 As MiniHtml = MH.Div.up(form1).cls("mb-3")
-	MH.Label.up(group1).text("Username")
-	MH.Input.up(group1).cls("form-control").attr("name", "username").attr("required", "true")
-	
-	Dim group2 As MiniHtml = MH.Div.up(form1).cls("mb-3")
-	MH.Label.up(group2).text("Password")
-	MH.Input.up(group2).cls("form-control").attr("name", "password").attr("type", "password").attr("required", "true")
-	
-	MH.Button.up(form1).cls("btn btn-primary w-100").text("Login")
-	
-	Dim footer1 As MiniHtml = MH.Div.up(body1).cls("mt-3 text-center")
-	MH.Span.up(footer1).text("Don't have an account? ")
-	MH.Anchor.up(footer1).attr("href", "/register").text("Register here")
-	
-	Return div1
+Private Sub AuthPage (Title As String, Subtitle As String, Eyebrow As String, Message As String, _
+	Content As MiniHtml, FootPrompt As String, FootLinkText As String, FootHref As String) As MiniHtml
+
+	Dim pageOptions As PUIPageOptions = PUI.NewPageOptions("$APP_TITLE$ - " & Title)
+	pageOptions.Description = "Pakai Asadi SQLite workspace"
+	pageOptions.BodyCssClass = "pui-asadi"
+	Dim page1 As MiniHtml = PUI.Document(pageOptions)
+
+	Dim head1 As MiniHtml = PUI.Head(page1)
+	PUI.StyleSheet(head1, "/assets/css/bootstrap.min.css?v=" & BootstrapVersion)
+	PUI.StyleSheet(head1, "/assets/css/bootstrap-icons.min.css?v=" & IconsVersion)
+	PUI.StyleSheet(head1, "/assets/css/pakaiui.css?v=" & PUI.VERSION)
+	PUI.StyleSheet(head1, "/assets/css/pakaiui-asadi.css?v=" & PUI.VERSION)
+	Dim icon1 As MiniHtml = Tag("link")
+	icon1.attr("rel", "icon")
+	icon1.attr("type", "image/png")
+	icon1.attr("href", "/assets/img/favicon.png")
+	icon1.up(head1)
+
+	Dim body1 As MiniHtml = PUI.Body(page1)
+	Dim wrap1 As MiniHtml = Tag("div").cls("pui-asadi-auth")
+	wrap1.up(body1)
+	Dim card1 As MiniHtml = Tag("div").cls("pui-asadi-auth-card")
+	card1.up(wrap1)
+
+	Dim brand1 As MiniHtml = Tag("div").cls("pui-asadi-auth-brand")
+	brand1.up(card1)
+	Dim mark1 As MiniHtml = Tag("span").cls("pui-asadi-auth-mark")
+	mark1.text("P")
+	mark1.up(brand1)
+	Dim appName1 As MiniHtml = Tag("span")
+	appName1.text("$APP_TITLE$")
+	appName1.up(brand1)
+
+	Dim eyebrow1 As MiniHtml = Tag("div").cls("pui-asadi-auth-eyebrow")
+	eyebrow1.text(Eyebrow)
+	eyebrow1.up(card1)
+
+	Dim title1 As MiniHtml = Tag("h1").cls("pui-asadi-auth-title")
+	title1.text(Title)
+	title1.up(card1)
+
+	Dim sub1 As MiniHtml = Tag("p").cls("pui-asadi-auth-sub")
+	sub1.text(Subtitle)
+	sub1.up(card1)
+
+	If Message <> "" Then
+		Dim alertOptions As PUIAlertOptions = PUI.NewAlertOptions(Message)
+		alertOptions.Variant = PUI.VariantDanger
+		PUI.Alert(alertOptions).up(card1)
+	End If
+
+	Content.up(card1)
+
+	Dim foot1 As MiniHtml = Tag("div").cls("pui-asadi-auth-foot")
+	foot1.up(card1)
+	PUI.AddText(foot1, FootPrompt & " ")
+	Dim link1 As MiniHtml = Tag("a")
+	link1.attr("href", FootHref)
+	link1.text(FootLinkText)
+	link1.up(foot1)
+
+	Dim meta1 As MiniHtml = Tag("div").cls("pui-asadi-auth-meta")
+	meta1.up(card1)
+	PUI.AddText(meta1, "Pakai Asadi " & Main.APP_VERSION & " - PakaiUI " & PUI.VERSION)
+	Return page1
 End Sub
 
-Private Sub ContainerRegister As MiniHtml
-	Dim div1 As MiniHtml = MH.Div.cls("container mt-1")
-	Dim row1 As MiniHtml = MH.Div.up(div1).cls("row justify-content-center")
-	Dim col1 As MiniHtml = MH.Div.up(row1).cls("col-md-4")
-	Dim card1 As MiniHtml = MH.Div.up(col1).cls("card shadow")
-	Dim header1 As MiniHtml = MH.Div.up(card1).cls("card-header bg-success text-white text-center")
-	MH.H3.up(header1).text("Register")
-	Dim body1 As MiniHtml = MH.Div.up(card1).cls("card-body")
-	MH.Div.up(body1).cls("alert alert-danger").sty("display: none").attr("id", "alert")
-	Dim form1 As MiniHtml = MH.Form.up(body1).attr("method", "POST").attr("action", "/register")
-	
-	Dim group1 As MiniHtml = MH.Div.up(form1).cls("mb-3")
-	MH.Label.up(group1).text("Username")
-	MH.Input.up(group1).cls("form-control").attr("name", "username").attr("required", "true")
-	
-	Dim group2 As MiniHtml = MH.Div.up(form1).cls("mb-3")
-	MH.Label.up(group2).text("Email")
-	MH.Input.up(group2).cls("form-control").attr("name", "email").attr("type", "email").attr("required", "true")
-	
-	Dim group3 As MiniHtml = MH.Div.up(form1).cls("mb-3")
-	MH.Label.up(group3).text("Password")
-	MH.Input.up(group3).cls("form-control").attr("name", "password").attr("type", "password").attr("required", "true")
-	
-	MH.Button.up(form1).cls("btn btn-success w-100").text("Register")
-	
-	Dim footer1 As MiniHtml = MH.Div.up(body1).cls("mt-3 text-center")
-	MH.Span.up(footer1).text("Already have an account? ")
-	MH.Anchor.up(footer1).attr("href", "/login").text("Login here")
-	
-	Return div1
+Private Sub LoginForm As MiniHtml
+	Dim form1 As MiniHtml = Form("/login")
+	Dim userOptions As PUIInputOptions = PUI.NewInputOptions("Username", "username")
+	userOptions.Required = True
+	userOptions.Placeholder = "your username"
+	PUI.Input(userOptions).up(form1)
+
+	Dim passOptions As PUIInputOptions = PUI.NewInputOptions("Password", "password")
+	passOptions.InputType = "password"
+	passOptions.Required = True
+	passOptions.Placeholder = "your password"
+	PUI.Input(passOptions).up(form1)
+
+	PUI.Button(SubmitButton("Sign in")).up(form1)
+	Return form1
+End Sub
+
+Private Sub RegisterForm As MiniHtml
+	Dim form1 As MiniHtml = Form("/register")
+	Dim userOptions As PUIInputOptions = PUI.NewInputOptions("Username", "username")
+	userOptions.Required = True
+	userOptions.Placeholder = "choose a username"
+	PUI.Input(userOptions).up(form1)
+
+	Dim emailOptions As PUIInputOptions = PUI.NewInputOptions("Email", "email")
+	emailOptions.InputType = "email"
+	emailOptions.Required = True
+	emailOptions.Placeholder = "you@example.com"
+	PUI.Input(emailOptions).up(form1)
+
+	Dim passOptions As PUIInputOptions = PUI.NewInputOptions("Password", "password")
+	passOptions.InputType = "password"
+	passOptions.Required = True
+	passOptions.Placeholder = "choose a password"
+	PUI.Input(passOptions).up(form1)
+
+	PUI.Button(SubmitButton("Create account")).up(form1)
+	Return form1
+End Sub
+
+Private Sub Form (Action As String) As MiniHtml
+	Dim form1 As MiniHtml = Tag("form")
+	form1.attr("method", "post")
+	form1.attr("action", Action)
+	Return form1
+End Sub
+
+Private Sub SubmitButton (Text As String) As PUIButtonOptions
+	Dim options1 As PUIButtonOptions = PUI.NewButtonOptions(Text)
+	options1.ButtonType = "submit"
+	options1.Variant = PUI.VariantPrimary
+	options1.CssClass = "w-100 mt-2"
+	Return options1
+End Sub
+
+Private Sub Tag (Name As String) As MiniHtml
+	Dim tag1 As MiniHtml
+	tag1.Initialize(Name)
+	Return tag1
 End Sub

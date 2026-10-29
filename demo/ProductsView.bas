@@ -2,60 +2,46 @@
 Group=Views
 ModulesStructureVersion=1
 Type=Class
-Version=10.5
+Version=10.7
 @EndOfDesignText@
 ' Products View
-' Version 6.99 rev4
+' Version 7.00
+' Renders the product catalogue with PakaiUI components and the Asadi theme.
 Sub Class_Globals
-	Private App As EndsMeet
+	
 End Sub
 
 Public Sub Initialize
-	App = Main.App
+	
 End Sub
 
-Public Sub Show As String
-	Dim page1 As MiniHtml = CreateOrReadFromCache("Products Page")
-	Return page1.build	
+Public Sub Show (Data As List) As String
+	Dim main1 As MainView
+	main1.Initialize
+	main1.LoadPage("Products", "Browse, search and maintain the product catalogue.", "products")
+	main1.LoadContent(ContainerContent(Data))
+	main1.LoadModal(MH.ContainerModal)
+	main1.LoadToast(MH.ContainerToast)
+	Return main1.Render.build
 End Sub
 
 Public Sub Modal (Action As String, CategoryList As List, Data As Map) As String
 	Select Action
 		Case "Add"
-			Dim modal1 As MiniHtml = CreateOrReadFromCache("Products Add Modal")
-			Dim dd1 As MiniHtml = modal1.ChildById("category1") 'dropdown
-			dd1.Children.Clear
-			MH.OptionDisabled("Select Category").up(dd1).selected
-			For Each row As Map In CategoryList
-				MH.OptionSelected(row.Get("category_name"), row.Get("id"), False).up(dd1)
-			Next
-			Return modal1.build
+			Return ModalAdd(CategoryList).build
 		Case "Edit"
-			Dim modal1 As MiniHtml = CreateOrReadFromCache("Products Edit Modal")
-			modal1.ChildById("id").attr("value", Data.Get("id"))
-			Dim dd1 As MiniHtml = modal1.ChildById("category2") 'dropdown
-			dd1.Children.Clear
-			MH.OptionDisabled("Select Category").up(dd1)
-			For Each row As Map In CategoryList
-				MH.OptionSelected(row.Get("category_name"), row.Get("id"), row.Get("id") = Data.Get("category_id")).up(dd1)
-			Next
-			modal1.ChildById("code").attr("value", Data.Get("product_code"))
-			modal1.ChildById("name").attr("value", Data.Get("product_name"))
-			Dim price As String = NumberFormat2(Data.Get("product_price"), 1, 2, 2, False)
-			modal1.ChildById("price").attr("value", price)
-			Return modal1.build
+			Return ModalEdit(CategoryList, Data).build
 		Case "Delete"
-			Dim modal1 As MiniHtml = CreateOrReadFromCache("Products Delete Modal")
-			modal1.ChildById("id").attr("value", Data.Get("id"))
-			modal1.ChildById("p1").replace($"Delete ${Data.Get("product_name")} (${Data.Get("product_code")})?"$)
-			Return modal1.build
+			Return ModalDelete(Data).build
 		Case Else
 			Return ""
 	End Select
 End Sub
 
 Public Sub Alert (info As AlertInfo) As String
-	Return MH.Alert(info)
+	Dim options1 As PUIAlertOptions = PUI.NewAlertOptions(info.Message)
+	options1.Variant = info.Status
+	Return PUI.Alert(options1).build
 End Sub
 
 Public Sub Toast (data As List, info As ToastInfo) As String
@@ -66,163 +52,272 @@ Public Sub RenderedTable (data As List) As String
 	Return ProductsTableFilled(data).build
 End Sub
 
-Private Sub CreateOrReadFromCache (CacheName As String) As MiniHtml
-	Select CacheName
-		Case "Products Page", "Products Table"
-			If MC.ExistInCache(App.ctx, CacheName) Then
-				Return MC.ReadFromCache(App.ctx, CacheName)
-			End If
-	End Select
-	Dim Segment As MiniHtml
-	Select CacheName
-		Case "Products Page"
-			Segment = ProductsPage
-		Case "Products Table"
-			Segment = ProductsTable
-		Case "Products Table Row"
-			Segment = ProductsTableRow
-		Case "Products Add Modal"
-			Segment = ModalAdd
-		Case "Products Edit Modal"
-			Segment = ModalEdit
-		Case "Products Delete Modal"
-			Segment = ModalDelete
-		Case Else
-			Segment.Initialize("")
-	End Select
-	MC.WriteToCache(App.ctx, CacheName, Segment.ConvertToBytes)
-	Return Segment
+Private Sub ContainerContent (Data As List) As MiniHtml
+	Dim panel1 As MiniHtml = Tag("section").cls("pui-asadi-panel")
+	Dim head1 As MiniHtml = Tag("div").cls("pui-asadi-panel-head")
+	head1.up(panel1)
+	Dim title1 As MiniHtml = Tag("h2")
+	title1.up(head1)
+	PUI.AddText(title1, "Product catalogue")
+	Dim countOptions As PUIBadgeOptions = PUI.NewBadgeOptions(Data.Size & " rows")
+	countOptions.Variant = PUI.VariantLight
+	countOptions.CssClass = "pui-asadi-count"
+	PUI.Badge(countOptions).up(head1)
+	AddProductButton(head1)
+
+	Dim body1 As MiniHtml = Tag("div").cls("pui-asadi-panel-body")
+	body1.up(panel1)
+	AddFilter(body1)
+
+	Dim container1 As MiniHtml = Tag("div")
+	container1.attr("id", "products-container")
+	container1.up(body1)
+	ProductsTableFilled(Data).up(container1)
+	Return panel1
 End Sub
 
-Private Sub ProductsPage As MiniHtml
-	Dim main1 As MainView
-	main1.Initialize
-	main1.LoadContent(ContainerContent)
-	main1.LoadSubContent(MH.GitHubLink)
-	main1.LoadModal(MH.ContainerModal)
-	main1.LoadToast(MH.ContainerToast)
-	Dim page1 As MiniHtml = main1.Render
-	Dim nav1 As MiniHtml = page1.ChildByClass("navbar-nav") 'ul
-	MH.NavLinkItem("Asadi", "/asadi", "bi bi-database me-2", "Asadi").up(nav1)
-	If App.api.EnableHelp Then MH.NavLinkItem("API", "/help", "bi bi-gear me-2", "API").up(nav1)
-	MH.NavLinkItem("Categories", "/categories", "bi bi-tag me-2", "Categories").up(nav1)
-	Return page1
+Private Sub AddFilter (Parent As MiniHtml)
+	Dim filterOptions As PUIFilterBarOptions = PUI.NewFilterBarOptions
+	filterOptions.Action = "/hx/products/table"
+	filterOptions.Method = "post"
+	filterOptions.AriaLabel = "Search products"
+	filterOptions.CssClass = "pui-asadi-filters"
+	Dim form1 As MiniHtml = PUI.FilterBar(filterOptions)
+	form1.up(Parent)
+	Dim htmx1 As PUIHtmxOptions = PUI.NewHtmxOptions("/hx/products/table")
+	htmx1.Method = "post"
+	htmx1.Target = "#products-container"
+	htmx1.Swap = "innerHTML"
+	PUI.Htmx(form1, htmx1)
+
+	Dim searchOptions As PUIInputOptions = PUI.NewInputOptions("Search", "keyword")
+	searchOptions.Placeholder = "Code, name or category"
+	searchOptions.CssClass = "col-auto mb-0"
+	PUI.Input(searchOptions).up(form1)
+
+	Dim submitOptions As PUIButtonOptions = PUI.NewButtonOptions("Search")
+	submitOptions.ButtonType = "submit"
+	submitOptions.Variant = PUI.VariantPrimary
+	submitOptions.Size = PUI.SizeSmall
+	PUI.Button(submitOptions).up(form1)
 End Sub
 
-Private Sub ContainerContent As MiniHtml
-	Dim content1 As MiniHtml = MH.Row.cls("mt-3")
-	Dim col12 As MiniHtml = MH.Col("md-12").up(content1)
-	Dim form1 As MiniHtml = MH.Form.up(col12).cls("form mb-3")
-	Dim row1 As MiniHtml = MH.Row.up(form1)
-	Dim col1 As MiniHtml = MH.Col("md-6 col-lg-6").up(row1)
-	Dim fg1 As MiniHtml = MH.InputGroup.up(col1)
-	MH.TextLabel("Search", "input-group-text mt-2", "keyword").up(fg1)
-	MH.InputSearch("form-control col-md-6 mt-2", "keyword", "keyword").up(fg1)
-	MH.ButtonSearch("Submit", "btn btn-danger btn-md pl-3 pr-3 ml-3 mt-2", "/hx/products/table", "#products-container").up(fg1)
-	Dim col2 As MiniHtml = MH.Div.up(row1).cls("col-md-6 col-lg-6")
-	Dim div2 As MiniHtml = MH.Div.up(col2).cls("float-end mt-2")
-	MH.ButtonAdd("Add Product", "btn btn-success ml-2", "/hx/products/add", "#modal-content", "click", "#modal-container", "modal").up(div2)
-	MH.ContainerHxGet("products-container", "/hx/products/table", "load", "Loading...").up(col12)
-	Return content1
+Private Sub AddProductButton (Parent As MiniHtml)
+	Dim addOptions As PUIButtonOptions = PUI.NewButtonOptions("Add product")
+	addOptions.Variant = PUI.VariantPrimary
+	addOptions.Size = PUI.SizeSmall
+	Dim add1 As MiniHtml = PUI.Button(addOptions)
+	Dim htmx1 As PUIHtmxOptions = PUI.NewHtmxOptions("/hx/products/add")
+	htmx1.Target = "#modal-content"
+	htmx1.Trigger = "click"
+	htmx1.Swap = "innerHTML"
+	PUI.Htmx(add1, htmx1)
+	add1.attr("data-bs-toggle", "modal")
+	add1.attr("data-bs-target", "#modal-container")
+	add1.up(Parent)
 End Sub
 
 Public Sub ProductsTableFilled (data As List) As MiniHtml
-	Dim table1 As MiniHtml = CreateOrReadFromCache("Products Table")
-	Dim tbody1 As MiniHtml = table1.ChildByName("tbody")
-	tbody1.Children.Clear
-	For Each row As Map In data
-		Dim tr1 As MiniHtml = CreateOrReadFromCache("Products Table Row")
-		tr1.child(0).replace(row.Get("id"))
-		tr1.child(1).replace(row.Get("product_code"))
-		tr1.child(2).replace(row.Get("product_name"))
-		tr1.child(3).replace(row.Get("category_name"))
-		tr1.child(4).replace(NumberFormat2(row.Get("product_price"), 1, 2, 2, True))
-		tr1.child(5).child(0).attr("hx-get", "/hx/products/edit/" & row.Get("id"))
-		tr1.child(5).child(1).attr("hx-get", "/hx/products/delete/" & row.Get("id"))
-		tr1.up(tbody1)
+	Dim tableOptions As PUITableOptions = PUI.NewTableOptions
+	Dim idColumn As PUITableColumn = PUI.NewTableColumn("#", "id")
+	idColumn.Align = PUI.AlignEnd
+	tableOptions.Columns.Add(idColumn)
+	tableOptions.Columns.Add(PUI.NewTableColumn("Code", "product_code"))
+	tableOptions.Columns.Add(PUI.NewTableColumn("Name", "product_name"))
+	tableOptions.Columns.Add(PUI.NewTableColumn("Category", "category_name"))
+	Dim priceColumn As PUITableColumn = PUI.NewTableColumn("Price", "price_display")
+	priceColumn.Align = PUI.AlignEnd
+	tableOptions.Columns.Add(priceColumn)
+	Dim actionsColumn As PUITableColumn = PUI.NewTableColumn("Actions", "")
+	actionsColumn.Align = PUI.AlignCenter
+	tableOptions.Columns.Add(actionsColumn)
+	tableOptions.Rows = DisplayRows(data)
+	tableOptions.RowIdField = "id"
+	tableOptions.EmptyText = "No products match this search."
+	tableOptions.Hover = True
+	tableOptions.CssClass = "pui-asadi-table"
+	Dim table1 As MiniHtml = PUI.Table(tableOptions)
+
+	If data.Size > 0 Then
+		Dim tableEl As MiniHtml = table1.ChildByClass("table")
+		Dim tbody1 As MiniHtml = tableEl.ChildByName("tbody")
+		For i = 0 To data.Size - 1
+			Dim row1 As Map = data.Get(i)
+			Dim tr1 As MiniHtml = tbody1.Children.Get(i)
+			Dim td1 As MiniHtml = tr1.Children.Get(tr1.Children.Size - 1)
+			td1.cls("text-center text-nowrap")
+			AddRowAction(td1, "Edit", "bi bi-pencil", "/hx/products/edit/" & row1.Get("id"))
+			AddRowAction(td1, "Delete", "bi bi-trash3", "/hx/products/delete/" & row1.Get("id"))
+		Next
+	End If
+	Return table1
+End Sub
+
+Private Sub DisplayRows (data As List) As List
+	Dim rows1 As List
+	rows1.Initialize
+	For Each row1 As Map In data
+		Dim display1 As Map = CreateMap()
+		For Each key As String In row1.Keys
+			display1.Put(key, row1.Get(key))
+		Next
+		display1.Put("price_display", NumberFormat2(row1.Get("product_price"), 1, 2, 2, True))
+		rows1.Add(display1)
 	Next
-	Return table1
+	Return rows1
 End Sub
 
-Private Sub ProductsTable As MiniHtml
-	Dim table1 As MiniHtml = MH.Table
-	table1.cls("table table-bordered table-hover rounded small")
-	Dim thead1 As MiniHtml = MH.Thead.cls("table-light").up(table1)
-	MH.Th.up(thead1).sty("text-align: right; width: 50px").text("#")
-	MH.Th.up(thead1).text("Code")
-	MH.Th.up(thead1).text("Name")
-	MH.Th.up(thead1).text("Category")
-	MH.Th.up(thead1).sty("text-align: right").text("Price")
-	MH.Th.up(thead1).sty("text-align: center; width: 120px").text("Actions")
-	MH.Tbody.up(table1)
-	Return table1
+Private Sub AddRowAction (Parent As MiniHtml, Title As String, IconClass As String, Url As String)
+	Dim buttonOptions As PUIButtonOptions = PUI.NewButtonOptions("")
+	buttonOptions.ButtonType = "button"
+	buttonOptions.Variant = PUI.VariantLink
+	buttonOptions.Size = PUI.SizeSmall
+	buttonOptions.CssClass = "p-0 mx-2"
+	Dim link1 As MiniHtml = PUI.Button(buttonOptions)
+	link1.attr("title", Title)
+	link1.attr("aria-label", Title)
+	Dim htmx1 As PUIHtmxOptions = PUI.NewHtmxOptions(Url)
+	htmx1.Target = "#modal-content"
+	htmx1.Trigger = "click"
+	htmx1.Swap = "innerHTML"
+	PUI.Htmx(link1, htmx1)
+	link1.attr("data-bs-toggle", "modal")
+	link1.attr("data-bs-target", "#modal-container")
+	Dim icon1 As MiniHtml = Tag("i")
+	icon1.cls(IconClass)
+	icon1.up(link1)
+	link1.up(Parent)
 End Sub
 
-Private Sub ProductsTableRow As MiniHtml
-	Dim tr1 As MiniHtml = MH.Tr
-	MH.Td.up(tr1).cls("align-middle").sty("text-align: right")
-	MH.Td.up(tr1).cls("align-middle")
-	MH.Td.up(tr1).cls("align-middle")
-	MH.Td.up(tr1).cls("align-middle")
-	MH.Td.up(tr1).cls("align-middle").sty("text-align: right")
-	Dim td6 As MiniHtml = MH.Td.up(tr1)
-	td6.cls("align-middle text-center px-1 py-1")
-	MH.AnchorIcon("edit text-primary mx-2", "/hx/products/edit/{id}", "Edit", "bi bi-pencil").up(td6)
-	MH.AnchorIcon("delete text-danger mx-2", "/hx/products/delete/{id}", "Delete", "bi bi-trash3").up(td6)
-	Return tr1
+Private Sub ModalAdd (CategoryList As List) As MiniHtml
+	Return ProductForm("Add product", "Create", "post", "", CategoryList, CreateMap())
 End Sub
 
-Private Sub ModalAdd As MiniHtml
-	Dim form1 As MiniHtml = MH.FormHxPost("/hx/products", "#modal-messages")
-	MH.ModalHeader("Add Product").up(form1)
-	Dim mb1 As MiniHtml = MH.ModalBody.up(form1)
-	MH.ModalMessage.up(mb1)
-	Dim fg1 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Category ", "category1").up(fg1)
-	MH.RequiredDropdown("category1", "category").up(fg1)
-	Dim fg2 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Code ", "").up(fg2)
-	MH.RequiredTextInput("", "code", "").up(fg2)
-	Dim fg3 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Name ", "").up(fg3)
-	MH.RequiredTextInput("", "name", "").up(fg3)
-	Dim fg4 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Price ", "").up(fg4)
-	MH.RequiredTextInput("", "price", "").up(fg4)
-	MH.ModalFooter("Create", "Cancel", "success", "secondary").up(form1)
+Private Sub ModalEdit (CategoryList As List, Data As Map) As MiniHtml
+	Return ProductForm("Edit product", "Update", "put", "" & Data.Get("id"), CategoryList, Data)
+End Sub
+
+Private Sub ProductForm (Title As String, SubmitText As String, Verb As String, Id As String, CategoryList As List, Data As Map) As MiniHtml
+	Dim form1 As MiniHtml = HtmxForm(Verb, "/hx/products", "#modal-messages")
+	AddModalHeader(form1, Title)
+
+	Dim body1 As MiniHtml = Tag("div").cls("modal-body")
+	body1.up(form1)
+	AddMessageSlot(body1)
+	If Id <> "" Then AddHidden(body1, "id", Id)
+
+	Dim selectedCategory As String = ""
+	If Data.ContainsKey("category_id") Then selectedCategory = "" & Data.Get("category_id")
+	AddCategorySelect(body1, selectedCategory, CategoryList)
+
+	Dim codeOptions As PUIInputOptions = PUI.NewInputOptions("Code", "code")
+	codeOptions.Required = True
+	If Data.ContainsKey("product_code") Then codeOptions.Value = "" & Data.Get("product_code")
+	PUI.Input(codeOptions).up(body1)
+
+	Dim nameOptions As PUIInputOptions = PUI.NewInputOptions("Name", "name")
+	nameOptions.Required = True
+	If Data.ContainsKey("product_name") Then nameOptions.Value = "" & Data.Get("product_name")
+	PUI.Input(nameOptions).up(body1)
+
+	Dim priceOptions As PUIInputOptions = PUI.NewInputOptions("Price", "price")
+	priceOptions.Required = True
+	If Data.ContainsKey("product_price") Then priceOptions.Value = NumberFormat2(Data.Get("product_price"), 1, 2, 2, False)
+	PUI.Input(priceOptions).up(body1)
+
+	Dim submitVariant As String = PUI.VariantPrimary
+	If Verb = "post" Then submitVariant = PUI.VariantSuccess
+	AddModalFooter(form1, SubmitText, submitVariant)
 	Return form1
 End Sub
 
-Private Sub ModalEdit As MiniHtml
-	Dim form1 As MiniHtml = MH.FormHxPut("/hx/products", "#modal-messages")
-	MH.ModalHeader("Edit Product").up(form1)
-	Dim mb1 As MiniHtml = MH.ModalBody.up(form1)
-	MH.ModalMessage.up(mb1)
-	MH.HiddenInput("id", "id", "").up(mb1)
-	Dim fg1 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Category ", "category2").up(fg1)
-	Dim dd1 As MiniHtml = MH.RequiredDropdown("category2", "category").up(fg1) 'dropdown
-	MH.Option.up(dd1).attr("value", "").text("Select Category")
-	Dim fg2 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Code ", "").up(fg2)
-	MH.RequiredTextInput("code", "code", "").up(fg2)
-	Dim fg3 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Name ", "").up(fg3)
-	MH.RequiredTextInput("name", "name", "").up(fg3)
-	Dim fg4 As MiniHtml = MH.FormGroup.up(mb1)
-	MH.RequiredLabel("Price ", "").up(fg4)
-	MH.RequiredTextInput("price", "price", "").up(fg4)
-	MH.ModalFooter("Update", "Cancel", "primary", "secondary").up(form1)
+Private Sub ModalDelete (Data As Map) As MiniHtml
+	Dim form1 As MiniHtml = HtmxForm("delete", "/hx/products?id=" & Data.Get("id"), "#modal-messages")
+	AddModalHeader(form1, "Delete product")
+
+	Dim body1 As MiniHtml = Tag("div").cls("modal-body")
+	body1.up(form1)
+	AddMessageSlot(body1)
+	AddHidden(body1, "id", "" & Data.Get("id"))
+	Dim text1 As MiniHtml = Tag("p")
+	text1.up(body1)
+	PUI.AddText(text1, "Delete " & Data.Get("product_name") & " (" & Data.Get("product_code") & ")?")
+	AddModalFooter(form1, "Delete", PUI.VariantDanger)
 	Return form1
 End Sub
 
-Private Sub ModalDelete As MiniHtml
-	Dim form1 As MiniHtml = MH.FormHxDelete("/hx/products", "#modal-messages")
-	MH.ModalHeader("Delete Product").up(form1)
-	Dim ModalBody As MiniHtml = MH.ModalBody.up(form1)
-	MH.ModalMessage.up(ModalBody)
-	MH.HiddenInput("id", "id", "").up(ModalBody)
-	MH.P.up(ModalBody).attr("id", "p1")
-	MH.ModalFooter("Delete", "Cancel", "danger", "secondary").up(form1)
+Private Sub AddCategorySelect (Parent As MiniHtml, Selected As String, CategoryList As List)
+	Dim selectOptions As PUISelectOptions = PUI.NewSelectOptions("Category", "category")
+	selectOptions.Placeholder = "Select category"
+	selectOptions.Required = True
+	If Selected <> "" Then selectOptions.SelectedValue = Selected
+	For Each row1 As Map In CategoryList
+		selectOptions.Items.Add(PUI.NewSelectItem("" & row1.Get("category_name"), "" & row1.Get("id")))
+	Next
+	PUI.SelectField(selectOptions).up(Parent)
+End Sub
+
+Private Sub HtmxForm (Verb As String, Href As String, Target As String) As MiniHtml
+	Dim form1 As MiniHtml = Tag("form")
+	form1.attr("action", Href)
+	Dim htmx1 As PUIHtmxOptions = PUI.NewHtmxOptions(Href)
+	htmx1.Method = Verb
+	htmx1.Target = Target
+	htmx1.Swap = "innerHTML"
+	PUI.Htmx(form1, htmx1)
 	Return form1
+End Sub
+
+Private Sub AddModalHeader (Parent As MiniHtml, Title As String)
+	Dim header1 As MiniHtml = Tag("div").cls("modal-header")
+	header1.up(Parent)
+	Dim title1 As MiniHtml = Tag("h2").cls("modal-title fs-5")
+	title1.text(Title)
+	title1.up(header1)
+	Dim close1 As MiniHtml = Tag("button")
+	close1.attr("type", "button")
+	close1.cls("btn-close")
+	close1.attr("data-bs-dismiss", "modal")
+	close1.attr("aria-label", "Close")
+	close1.up(header1)
+End Sub
+
+Private Sub AddMessageSlot (Parent As MiniHtml)
+	Dim messages1 As MiniHtml = Tag("div")
+	messages1.attr("id", "modal-messages")
+	messages1.up(Parent)
+End Sub
+
+Private Sub AddHidden (Parent As MiniHtml, Name As String, Value As String)
+	Dim hidden1 As MiniHtml = Tag("input")
+	hidden1.attr("type", "hidden")
+	hidden1.attr("id", Name)
+	hidden1.attr("name", Name)
+	hidden1.attr("value", Value)
+	hidden1.up(Parent)
+End Sub
+
+Private Sub AddModalFooter (Parent As MiniHtml, SubmitText As String, SubmitVariant As String)
+	Dim footer1 As MiniHtml = Tag("div").cls("modal-footer")
+	footer1.up(Parent)
+
+	Dim submitOptions As PUIButtonOptions = PUI.NewButtonOptions(SubmitText)
+	submitOptions.ButtonType = "submit"
+	submitOptions.Variant = SubmitVariant
+	submitOptions.CssClass = "px-3"
+	PUI.Button(submitOptions).up(footer1)
+
+	Dim cancelOptions As PUIButtonOptions = PUI.NewButtonOptions("Cancel")
+	cancelOptions.ButtonType = "button"
+	cancelOptions.Variant = PUI.VariantSecondary
+	cancelOptions.CssClass = "px-3"
+	Dim cancel1 As MiniHtml = PUI.Button(cancelOptions)
+	cancel1.attr("data-bs-dismiss", "modal")
+	cancel1.up(footer1)
+End Sub
+
+Private Sub Tag (Name As String) As MiniHtml
+	Dim tag1 As MiniHtml
+	tag1.Initialize(Name)
+	Return tag1
 End Sub

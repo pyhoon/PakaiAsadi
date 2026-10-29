@@ -94,8 +94,17 @@ Public Sub Create (Category As Int, Code As String, Name As String, Price As Dou
 	DB.Table = "tbl_products"
 	DB.Columns = Array("category_id", "product_code", "product_name", "product_price", "created_date")
 	DB.Parameters = Array(Category, Code, Name, Price, Created_Date)
-	DB.ReturnRow = True
+	' MiniORMUtils 6.04 fails while reading back an inserted row on this table,
+	' so insert first and query the new row without the BLOB column below.
+	DB.ReturnRow = False
 	DB.Save
+	If DB.Error.IsInitialized Then Return
+	Dim newId As Int = DB.GetLastInsertID
+	DB.Table = "tbl_products"
+	DB.Columns = Array("id", "category_id", "product_code", "product_name", "product_price")
+	DB.Condition = "id = ?"
+	DB.Parameter = newId
+	DB.Query
 End Sub
 
 Public Sub Read As List

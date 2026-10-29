@@ -44,7 +44,12 @@ Sub Handle (req As ServletRequest, resp As ServletResponse)
 End Sub
 
 Private Sub HandlePage
-	App.WriteHtml2(Response, View.Show, App.ctx)
+	Dim Rows As List = Model.Read
+	If Model.Error.IsInitialized Then
+		ShowAlert($"Database error: ${Model.Error.Message}"$, "danger")
+		Return
+	End If
+	App.WriteHtml2(Response, View.Show(Rows), App.ctx)
 End Sub
 
 ' Return table HTML

@@ -44,17 +44,11 @@ Sub Handle (req As ServletRequest, resp As ServletResponse)
 End Sub
 
 Private Sub ShowLoginPage (Message As String)
-	Dim MV As MainView
-	MV.Initialize
-	MV.LoadContent(View.Login(Message))
-	App.WriteHtml2(Response, MV.Render.build, App.ctx)
+	App.WriteHtml2(Response, View.Login(Message).build, App.ctx)
 End Sub
 
 Private Sub ShowRegisterPage (Message As String)
-	Dim MV As MainView
-	MV.Initialize
-	MV.LoadContent(View.Register(Message))
-	App.WriteHtml2(Response, MV.Render.build, App.ctx)
+	App.WriteHtml2(Response, View.Register(Message).build, App.ctx)
 End Sub
 
 Private Sub HandleLogin
