@@ -2,6 +2,8 @@
 
 Pakai Asadi is an embedded SQLite administration component for B4J. It registers handlers on the host's existing EndsMeet server; it never starts a separate server.
 
+New to the library? Start with [QUICKSTART.md](QUICKSTART.md) for installation and host integration in the Pakai Server template or a plain B4J + EndsMeet application.
+
 ## Status (M1-M5)
 
 This checkout contains the B4J source project, local demo hosts under `source/` and `demo/`, and the packaging tooling for the library:
