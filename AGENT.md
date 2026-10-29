@@ -35,6 +35,13 @@ The command-line builder does not print the B4J IDE's warnings, even with `-Show
 - A library build cannot reuse the generated `main.java` whose imports come from an application build. The script deletes `source/Objects/src` and `source/Objects/bin` before compiling, leaving the application jar and any runtime files under `Objects` alone.
 - B4J loads additional libraries from `C:\B4X\Additional\B4J` (B4J-only) and `C:\B4X\Additional\B4X` (shared). Install the archive into the former. Verify a package with a scratch host that contains none of the Asadi modules, as in `tests/M5-checklist.md`; do not install test builds permanently.
 
+## Script portability
+
+- Do not add `.ps1` files to Git plumbing. Clean/smudge filters, hooks, and per-clone setup scripts must not be PowerShell. The repository stores `.bas` and `.b4j` files exactly as saved, so checkout, commit, and first run need no script.
+- `.ps1` is allowed only for Windows-only developer tooling that a person runs explicitly. `tools/package-b4xlib.ps1` is the only current use: `B4JBuilder.exe` is Windows-only, and neither Git nor the IDE invokes the script.
+- Do not use `.bat` as the replacement for new tooling. Batch has weak error handling, quoting, hashing, and archive support. For cross-platform scripts, use POSIX `sh`. Use Python only when the repository already requires Python; do not add a Python dependency for packaging.
+- Never make a build, checkout, commit, or first-run step depend on an interpreter outside the documented B4J/Windows toolchain.
+
 ## Source encoding and Git
 
 The B4J IDE saves `.bas` and `.b4j` files as UTF-8 with a BOM and CRLF line endings. The repository stores exactly those bytes: `.gitattributes` sets `-text` for both extensions, which disables Git's CRLF/LF conversion. No clean or smudge filter is used.
