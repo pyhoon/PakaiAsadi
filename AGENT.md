@@ -50,6 +50,8 @@ git add --renormalize .
 
 The smudge side matters. With a pass-through smudge, a checkout produced a BOM-free file, then the first IDE save added three bytes. Git updates the index stat before it compares filtered content, so `git status` and GitHub Desktop listed the file as modified while `git diff` showed nothing ("No content changes found"). A save that only rewrites an existing BOM keeps the size stable and stays clean. Restoring the BOM on checkout removes that size-only change. The same stale stat rows are left by `git add --renormalize`, which records the filtered size; run `git add .` once after the renormalize commit so the index records the working-tree sizes.
 
+The setup script also adds the BOM to tracked `.bas`/`.b4j` files in the current checkout when they have no local edits, then refreshes only their index stat data. A clone therefore works on the first IDE save without a spurious diff. Files with local edits are skipped with a warning and get the BOM on the next IDE save.
+
 Because the setting is local, a fresh clone must run the setup before its first commit; without it, Git ignores the attribute and commits the BOM.
 
 `* text=auto` does not solve this. It normalizes CRLF/LF only and leaves `EF BB BF` in the blob. A `working-tree-encoding=UTF-8` attribute also leaves the BOM in the blob; both were tested and rejected. Do not add either as a substitute.

@@ -6,10 +6,14 @@
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup-git-filters.ps1
 #
-# After registering the filter, normalize existing blobs once:
+# The script also adds the BOM to unmodified sources in the current checkout,
+# so the first B4J save does not change their size.
+#
+# On an older clone that still has BOM-bearing blobs, normalize them once:
 #
 #   git add --renormalize .
 #   git commit -m "normalize B4J sources without BOM"
+#   git add .
 #
 # See AGENT.md for the full rationale.
 
@@ -51,10 +55,41 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to set filter.stripbom.smudge' }
 & git -C $repoRoot config --local filter.stripbom.required 'true'
 if ($LASTEXITCODE -ne 0) { throw 'Failed to set filter.stripbom.required' }
 
+# A clone happened before the filter existed, so its files are BOM-free and the
+# first IDE save would change their size. Give unmodified sources the BOM now.
+# Skip files with local edits so this never stages work in progress.
+$normalized = 0
+$skipped = 0
+foreach ($path in (& git -C $repoRoot ls-files '*.bas' '*.b4j')) {
+    $fullPath = Join-Path $repoRoot ($path -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $fullPath)) { continue }
+
+    $bytes = [IO.File]::ReadAllBytes($fullPath)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { continue }
+
+    & git -C $repoRoot diff --quiet -- $path
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Not touching $path because it has local changes."
+        $skipped++
+        continue
+    }
+
+    [IO.File]::WriteAllBytes($fullPath, ([byte[]](0xEF, 0xBB, 0xBF) + $bytes))
+    # The clean filter removes the BOM again, so this only refreshes the index
+    # stat data and stages no content change.
+    & git -C $repoRoot add -- $path
+    if ($LASTEXITCODE -ne 0) { throw "Failed to refresh the index for $path" }
+    $normalized++
+}
+
 Write-Host "Registered filter.stripbom in $repoRoot"
 Write-Host "  clean:  $cleanCommand"
 Write-Host "  smudge: $smudgeCommand"
 Write-Host "  required: true"
+Write-Host "  worktree BOM normalization: $normalized file(s)"
+if (0 -lt $skipped) {
+    Write-Host "  skipped $skipped file(s) with local changes; save them once in B4J."
+}
 Write-Host ''
-Write-Host 'Run "git add --renormalize ." once to strip BOMs from existing blobs,'
-Write-Host 'then "git add ." once more so the index records the working-tree sizes.'
+Write-Host 'Existing blobs are normalized already. On an older clone run'
+Write-Host '"git add --renormalize .", commit, then "git add ." once more.'
