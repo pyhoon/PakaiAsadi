@@ -9,4 +9,3 @@ demo/logs/
 *.db-shm
 *.db-wal
 *.b4j.meta
-release/
