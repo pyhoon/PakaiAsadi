@@ -27,9 +27,10 @@ The command-line builder does not print the B4J IDE's warnings, even with `-Show
 
 ## Packaging the library
 
-`tools/package-b4xlib.ps1` runs the library build and writes `dist/PakaiAsadi.b4xlib`. A B4J `.b4xlib` is a plain zip with the `.bas` files and `manifest.txt` at its root. The package contains only `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, and `manifest.txt`; `main` and `DemoHomeHandler` are demo-host code and are excluded.
+`tools/package-b4xlib.ps1` runs the library build and writes `dist/PakaiAsadi.b4xlib`. A B4J `.b4xlib` is a plain zip with the `.bas` files and `manifest.txt` at its root; the script's value is the version/parity checks and build orchestration, not a proprietary archive format. The package contains only `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, and `manifest.txt`; `main` and `DemoHomeHandler` are demo-host code and are excluded.
 
 - Keep `#LibraryName: PakaiAsadi`, `#LibraryVersion`, and `#LibraryAuthor` in `source/Pakai-Asadi.b4j` aligned with `source/manifest.txt`. The script refuses to package a version mismatch.
+- To assemble the archive without the script, use the JDK's `jar`: put the three modules and `manifest.txt` at the root of a staging folder, then run `jar -cMf dist\PakaiAsadi.b4xlib -C <staging> .`. `-M` omits `META-INF/MANIFEST.MF`, which B4J does not need.
 - `manifest.txt` uses `Author=`, `Version=`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, and `Supported Platforms=B4J`. Verified: a host project listing only `jcore` and `pakaiasadi` builds and runs, and the merged jar contains `org/sqlite` even without `#AdditionalJar: sqlite-jdbc`.
 - The script refuses to package when the `source/` and `demo/` copies of a library module differ. A leading UTF-8 BOM is ignored in that comparison because the B4J IDE may add one on save.
 - A library build cannot reuse the generated `main.java` whose imports come from an application build. The script deletes `source/Objects/src` and `source/Objects/bin` before compiling, leaving the application jar and any runtime files under `Objects` alone.
