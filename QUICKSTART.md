@@ -56,7 +56,7 @@ Canonical paths are checked, so `..`, symlinks, and files outside the allowed di
 
 ## 4. Integrate with a Pakai Server template
 
-The included `demo/demo.b4j` is a working example based on the Pakai Server/Lanyard template. The template already provides `EndsMeet`, `MiniORM` (`ORM`), the global `AuthFilter`, and `tbl_users` with a `role` column.
+The included `demo/demo.b4j` is a working example based on the Pakai Server/Lanyard template. It consumes the packaged archive exactly as an integrator would: tick `pakaiasadi` and install `release/PakaiAsadi.b4xlib` into `C:\B4X\Additional\B4J` before building; the demo contains no Asadi modules. The template already provides `EndsMeet`, `MiniORM` (`ORM`), the global `AuthFilter`, and `tbl_users` with a `role` column.
 
 ### 4.1 Declare the component
 

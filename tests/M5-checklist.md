@@ -1,16 +1,13 @@
 # M5 library packaging checklist
 
-These checks cover the `.b4xlib` build, its manifest, and consumption from a host project that does not contain the Asadi modules. Run them against disposable copies; do not install a test build permanently into the B4J additional libraries folder.
+These checks cover the `.b4xlib` build, its manifest, and consumption from the demo host, which ticks `pakaiasadi` and contains no Asadi modules. Run them against disposable copies; do not install a test build permanently into the B4J additional libraries folder.
 
 ## Setup
 
-1. Build both hosts from their project directories:
+1. Build the library host from its project directory:
 
    ```powershell
    cd source
-   & 'C:\Program Files\B4X\B4J\B4JBuilder.exe' -Task=Build -NoClean=True -ShowWarnings=True
-
-   cd ..\demo
    & 'C:\Program Files\B4X\B4J\B4JBuilder.exe' -Task=Build -NoClean=True -ShowWarnings=True
    ```
 
@@ -29,18 +26,21 @@ These checks cover the `.b4xlib` build, its manifest, and consumption from a hos
    manifest.txt
    ```
 
-4. Copy `release/PakaiAsadi.b4xlib` to `C:\B4X\Additional\B4J\` for the consumer build, then remove it after testing.
+4. Copy `release/PakaiAsadi.b4xlib` to `C:\B4X\Additional\B4J\`, then build the demo. It resolves the three modules from the archive and must build with no Asadi `.bas` file in `demo/`.
+
+   ```powershell
+   cd ..\demo
+   & 'C:\Program Files\B4X\B4J\B4JBuilder.exe' -Task=Build -NoClean=True -ShowWarnings=True
+   ```
 
 ## Packaging
 
 | Case | Expected |
 |---|---|
-| Run the script with a clean `source/` and `demo/` | `BuildLibrary` ends with `Completed successfully`; `release/PakaiAsadi.b4xlib` is created |
+| Run the script with a clean `source/` | `BuildLibrary` ends with `Completed successfully`; `release/PakaiAsadi.b4xlib` is created |
 | Inspect the archive | Only the three library modules plus `manifest.txt`; `main` and `DemoHomeHandler` are absent |
 | Read `manifest.txt` | `Author=Aeric Poon`, `Version=1.00`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, `Supported Platforms=B4J` |
 | Compare `#LibraryVersion` in `source/Pakai-Asadi.b4j` with the manifest | Equal; the script rejects a mismatch |
-| Edit a `source/` module without syncing its `demo/` copy, then package | The script stops with a source/demo drift error and writes no archive |
-| Add a UTF-8 BOM to one copy only | Packaging proceeds; a BOM-only difference is not drift |
 | Run a normal `-Task=Build` and then the package script | Packaging succeeds; the script discards the generated `Objects/src` and `Objects/bin` that a library build cannot reuse |
 | Keep a direct `SubExists(Main, ...)` reference in a library module | `BuildLibrary` fails with `Cannot access excluded module: main` |
 | Package with `-SkipBuild` | Archives the current sources without running the compiler |
@@ -49,7 +49,9 @@ The library build compiles every non-main module in `source/Pakai-Asadi.b4j`, in
 
 ## Consumer build
 
-Create a scratch copy of `source/` with `Objects/`, `logs/`, `AutoBackups/`, and `data/` excluded, then:
+`demo/demo.b4j` is the committed consumer: `Library10=pakaiasadi`, no Asadi modules in `demo/`. Build it after installing the archive and confirm the `/asadi` pages still work.
+
+For a stricter dependency check, create a scratch copy of `source/` with `Objects/`, `logs/`, `AutoBackups/`, and `data/` excluded, then:
 
 1. Delete `AsadiHandler.bas`, `AsadiState.bas`, and `PakaiAsadi.bas` from the copy.
 2. Remove `#LibraryName`, `#LibraryVersion`, and `#LibraryAuthor` from the copy's `Pakai-Asadi.b4j` (a consuming application does not declare them).
@@ -82,8 +84,9 @@ A stronger dependency check: keep only `Library1=jcore` and `Library2=pakaiasadi
 
 2026-10-29, B4JBuilder 10.70 / Java 19.0.2.
 
-- `source/Pakai-Asadi.b4j` and `demo/demo.b4j` built successfully after the `AsadiState.HostModule` change.
+- `source/Pakai-Asadi.b4j` built successfully after the `AsadiState.HostModule` change.
 - `tools/package-b4xlib.ps1` ran `-Task=BuildLibrary` successfully and created `release/PakaiAsadi.b4xlib` with the four expected entries.
+- `demo/demo.b4j` now ticks `Library10=pakaiasadi` and `demo/` holds no Asadi modules. After installing the archive, the demo built successfully; its `demo.jar` contained `b4j/pakai/asadihandler.class`, `asadistate.class`, `pakaiasadi.class`, and 146 `org/sqlite/` entries.
 - A scratch host containing none of the three Asadi modules, with `Library5=pakaiasadi`, built and ran on port 8080 against a disposable copy of `source/data/demo.db`. The 31-check smoke suite (dashboard, table, edit, insert/update/delete, CSRF negatives, index detail, SQL) and the 6-check edge suite (SQL rejection, SQL error surfacing, `NOT NULL` rejection) passed.
 - A second scratch host listing only `jcore` and `pakaiasadi`, without `#AdditionalJar: sqlite-jdbc`, also built and passed both suites. Its `result.jar` contained `org/sqlite/JDBC.class`.
 - The test install was removed from `C:\B4X\Additional\B4J` afterwards. `source/data/demo.db` remained at 61 `people` rows with row 7 still `Person 7`.

@@ -6,7 +6,7 @@ New to the library? Start with [QUICKSTART.md](QUICKSTART.md) for installation a
 
 ## Status (M1-M5)
 
-This checkout contains the B4J source project, local demo hosts under `source/` and `demo/`, and the packaging tooling for the library:
+This checkout contains the B4J source project, two demo hosts (`source/` compiles the library from source; `demo/` consumes the packaged `.b4xlib`), and the packaging tooling for the library:
 
 - `PakaiAsadi.bas` - public configuration, explicit database allowlist and route registration.
 - `AsadiState.bas` - request-shared module state, including the per-process CSRF secret and the host module name.
@@ -16,7 +16,7 @@ This checkout contains the B4J source project, local demo hosts under `source/` 
 - `tools/package-b4xlib.ps1` - runs the library build and assembles `release/PakaiAsadi.b4xlib`.
 - `libs.json` - EndsMeet 4.03 and Xerial SQLite JDBC 3.53.2.1, matching the driver installed in the current B4J environment.
 
-Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compile with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The standalone `source` host was launched on 2026-10-28 and its M1-M4 pages and write paths were exercised against a disposable SQLite file; the Lanyard demo host was exercised separately on a disposable copy of `pakai.db`. See [tests/M2-checklist.md](tests/M2-checklist.md), [tests/M3-checklist.md](tests/M3-checklist.md), and [tests/M4-checklist.md](tests/M4-checklist.md). The Lanyard host flow remains application-specific and is covered by [tests/M1-checklist.md](tests/M1-checklist.md). The packaged `.b4xlib` was built and consumed by a host project that contained none of the Asadi modules; M5 checks are in [tests/M5-checklist.md](tests/M5-checklist.md).
+Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compile with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The demo ticks `pakaiasadi` instead of embedding the library modules, so build and install `release/PakaiAsadi.b4xlib` first. The standalone `source` host was launched on 2026-10-28 and its M1-M4 pages and write paths were exercised against a disposable SQLite file; the Lanyard demo host was exercised separately on a disposable copy of `pakai.db`. See [tests/M2-checklist.md](tests/M2-checklist.md), [tests/M3-checklist.md](tests/M3-checklist.md), and [tests/M4-checklist.md](tests/M4-checklist.md). The Lanyard host flow remains application-specific and is covered by [tests/M1-checklist.md](tests/M1-checklist.md). M5 covers the packaged `.b4xlib`, including the demo's consumer build, in [tests/M5-checklist.md](tests/M5-checklist.md).
 
 ## Public API
 
@@ -94,7 +94,7 @@ The SQL workspace runs one validated statement at a time and caps output at 200 
 - Xerial `org.xerial:sqlite-jdbc:3.53.2.1` (installed as `sqlite-jdbc.jar`).
 - MiniHTML 4.02 and MiniORMUtils 6.04, plus B4J `JavaObject` and `jSQL` libraries.
 
-Open `demo/demo.b4j` in B4J, use the IDE library installer with `demo/libs.json`, then run its Default (SQLite) build. Asadi registers only the host-configured SQLite database and does not create database files. Open `http://127.0.0.1:8080/` and navigate to `/asadi` after logging in as a user with the `admin` role. The starter template's `Objects` database/config are treated as host data and are not modified by Asadi.
+Open `demo/demo.b4j` in B4J, use the IDE library installer with `demo/libs.json`, and install `release/PakaiAsadi.b4xlib` into `C:\B4X\Additional\B4J` (the demo ticks `pakaiasadi` and contains no Asadi modules), then run its Default (SQLite) build. Asadi registers only the host-configured SQLite database and does not create database files. Open `http://127.0.0.1:8080/` and navigate to `/asadi` after logging in as a user with the `admin` role. The starter template's `Objects` database/config are treated as host data and are not modified by Asadi.
 
 The demo's `main` module sits in `demo.b4j` and its `#If Release` block sets `App.ssl.Enabled = True`. EndsMeet then registers its `HttpsFilter`, and its SSL settings come from a `.env` file in `Files/` (bundled into `DirAssets`), which the demo does not include. Without a configured keystore and `SSL_PORT`, the server logs `Ssl KeystoreFile is not set` and redirects HTTP requests to `https://127.0.0.1:` with an empty port, so the demo is unreachable over HTTP. Either add a `.env` with `SSL_ENABLED`, `SSL_PORT`, `SSL_KEYSTORE_DIR`, `SSL_KEYSTORE_FILE`, and `SSL_KEYSTORE_PASSWORD` plus a matching keystore to `demo/Files/`, or build the demo with `App.ssl.Enabled = False` for local HTTP testing. Do not commit a local SSL-disable patch.
 

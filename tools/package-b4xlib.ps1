@@ -35,7 +35,6 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..')).Path
 $sourceDir = Join-Path $repoRoot 'source'
-$demoDir = Join-Path $repoRoot 'demo'
 $projectPath = Join-Path $sourceDir 'Pakai-Asadi.b4j'
 $manifestPath = Join-Path $sourceDir 'manifest.txt'
 if ($OutputPath -eq '') { $OutputPath = Join-Path $repoRoot 'release\PakaiAsadi.b4xlib' }
@@ -44,30 +43,9 @@ $OutputPath = [System.IO.Path]::GetFullPath($OutputPath)
 # Only these modules ship. main and DemoHomeHandler are demo-host code.
 $modules = @('AsadiHandler.bas', 'AsadiState.bas', 'PakaiAsadi.bas')
 
-# B4J's IDE may save sources with a UTF-8 BOM while a command-line copy has none.
-# Compare content without the BOM so the release check tracks real changes.
-function Get-ContentHash([string]$Path) {
-    $bytes = [System.IO.File]::ReadAllBytes($Path)
-    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
-        $bytes = $bytes[3..($bytes.Length - 1)]
-    }
-    $sha = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        return ([System.BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '')
-    }
-    finally {
-        $sha.Dispose()
-    }
-}
-
 foreach ($module in $modules) {
     $sourceFile = Join-Path $sourceDir $module
     if (-not (Test-Path -LiteralPath $sourceFile)) { throw "Missing library source: $sourceFile" }
-    $demoFile = Join-Path $demoDir $module
-    if (-not (Test-Path -LiteralPath $demoFile)) { throw "Missing demo copy: $demoFile" }
-    if ((Get-ContentHash $sourceFile) -ne (Get-ContentHash $demoFile)) {
-        throw "source/$module and demo/$module differ. Sync the demo copy before packaging."
-    }
 }
 
 if (-not (Test-Path -LiteralPath $manifestPath)) { throw "Missing library manifest: $manifestPath" }

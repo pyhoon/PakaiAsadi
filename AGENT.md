@@ -27,12 +27,13 @@ The command-line builder does not print the B4J IDE's warnings, even with `-Show
 
 ## Packaging the library
 
-`tools/package-b4xlib.ps1` runs the library build and writes `release/PakaiAsadi.b4xlib`. A B4J `.b4xlib` is a plain zip with the `.bas` files and `manifest.txt` at its root; the script's value is the version/parity checks and build orchestration, not a proprietary archive format. The package contains only `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, and `manifest.txt`; `main` and `DemoHomeHandler` are demo-host code and are excluded.
+`tools/package-b4xlib.ps1` runs the library build and writes `release/PakaiAsadi.b4xlib`. A B4J `.b4xlib` is a plain zip with the `.bas` files and `manifest.txt` at its root; the script's value is the version check and build orchestration, not a proprietary archive format. The package contains only `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, and `manifest.txt`; `main` and `DemoHomeHandler` are demo-host code and are excluded.
 
 - Keep `#LibraryName: PakaiAsadi`, `#LibraryVersion`, and `#LibraryAuthor` in `source/Pakai-Asadi.b4j` aligned with `source/manifest.txt`. The script refuses to package a version mismatch.
 - To assemble the archive without the script, use the JDK's `jar`: put the three modules and `manifest.txt` at the root of a staging folder, then run `jar -cMf release\PakaiAsadi.b4xlib -C <staging> .`. `-M` omits `META-INF/MANIFEST.MF`, which B4J does not need.
 - `manifest.txt` uses `Author=`, `Version=`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, and `Supported Platforms=B4J`. Verified: a host project listing only `jcore` and `pakaiasadi` builds and runs, and the merged jar contains `org/sqlite` even without `#AdditionalJar: sqlite-jdbc`.
-- The script refuses to package when the `source/` and `demo/` copies of a library module differ. A leading UTF-8 BOM is ignored in that comparison because the B4J IDE may add one on save.
+- The script refuses to package a project whose `#LibraryName` or `#LibraryVersion` disagrees with `manifest.txt`.
+- `demo/demo.b4j` consumes `release/PakaiAsadi.b4xlib` as the `pakaiasadi` library. Package the archive and copy it into `C:\B4X\Additional\B4J` before building the demo. The demo holds no copies of the library modules, so there is nothing to keep in sync.
 - A library build cannot reuse the generated `main.java` whose imports come from an application build. The script deletes `source/Objects/src` and `source/Objects/bin` before compiling, leaving the application jar and any runtime files under `Objects` alone.
 - B4J loads additional libraries from `C:\B4X\Additional\B4J` (B4J-only) and `C:\B4X\Additional\B4X` (shared). Install the archive into the former. Verify a package with a scratch host that contains none of the Asadi modules, as in `tests/M5-checklist.md`; do not install test builds permanently.
 
@@ -51,7 +52,7 @@ That is the whole fix. When the working file and the committed blob contain the 
 
 Do not add `* text=auto`, `working-tree-encoding=UTF-8`, or a `filter=` driver. The first two normalize line endings only and leave the BOM in place; a filter needs local configuration on every clone and can leave the index reporting a size-only change. Keep the BOM in the committed file instead.
 
-If an editor saves LF or removes the BOM, that is a real byte change and will show as a diff. Fix the editor setting; do not hide it with a filter. The packaging script already ignores a leading BOM when comparing `source/` and `demo/` copies.
+If an editor saves LF or removes the BOM, that is a real byte change and will show as a diff. Fix the editor setting; do not hide it with a filter.
 
 ## B4J coding conventions
 
@@ -81,6 +82,6 @@ The builder resolves `#AdditionalJar` names from `C:\Program Files\B4X\B4J\libra
 - `POST` is registered for the SQL workspace and row-edit routes only. Preserve the explicit `405` + `Allow` responses everywhere else.
 - `jSQL`'s `ResultSet` wrapper cannot expose metadata or distinguish BLOBs. Use `JavaObject`/JDBC for arbitrary SQL, `RunMethodJO` for object-returning Java calls, and `getBytes` for BLOB columns. Apply sanitized error text (`[SQLITE…` onward) and never show registered paths.
 - There is no enforced SQL query timeout in Xerial 3.53.2.1 (`setQueryTimeout` is a no-op), and returned values are materialized before preview caps. Do not claim otherwise; rely on host/proxy timeouts and trusted-admin access.
-- Keep source modules under `source/` synchronized with the corresponding demo host modules under `demo/`. `tools/package-b4xlib.ps1` refuses to package when `source/AsadiHandler.bas`, `AsadiState.bas`, or `PakaiAsadi.bas` differs from its demo copy. Copy the source files over the demo copies from the repository root after editing either side, then build both. Use explicit `Copy-Item -Path <source> -Destination <demo>` arguments; a comma-separated pair binds both paths to `-Path` and copies the files into the current directory instead. Run verification steps in `tests/M1-checklist.md` through `tests/M5-checklist.md` as applicable.
+- Do not add copies of the library modules to `demo/`. The demo is a consumer: it ticks `pakaiasadi` and relies on `release/PakaiAsadi.b4xlib` being installed in the B4J additional libraries folder. After changing a library module, repackage and reinstall the archive, then build both projects. Run verification steps in `tests/M1-checklist.md` through `tests/M5-checklist.md` as applicable.
 - Never run destructive verification against `demo/Objects/pakai.db`; use an isolated database copy. `tests/M2-fixture.sql` is for a disposable demo database and replaces its `people`/`teams` fixture objects.
 - The Lanyard demo's `#If Release` sets `App.ssl.Enabled = True`, and EndsMeet reads SSL settings from a `.env` bundled from `Files/`. Without one, HTTP requests redirect to `https://127.0.0.1:` with an empty port. For local HTTP testing, build with `App.ssl.Enabled = False` and restore `demo/demo.b4j` before committing. Run the demo jar from `demo/Objects` and keep its `sqlite.ini` pointing at a disposable database copy; running it from `demo/` creates stray `config.ini`, `sqlite.ini`, and `pakai.db` files there.
