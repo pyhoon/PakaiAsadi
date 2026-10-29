@@ -87,6 +87,7 @@ Private Sub CategoriesPage As MiniHtml
 	main1.LoadToast(MH.ContainerToast)
 	Dim page1 As MiniHtml = main1.Render
 	Dim nav1 As MiniHtml = page1.ChildByClass("navbar-nav") 'ul
+	MH.NavLinkItem("Asadi", "/asadi", "bi bi-database me-2", "Asadi").up(nav1)
 	If App.api.EnableHelp Then MH.NavLinkItem("API", "/help", "bi bi-gear me-2", "API").up(nav1)
 	MH.NavLinkItem("Home", "/", "bi bi-house me-2", "Home").up(nav1)
 	Return page1
