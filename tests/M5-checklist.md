@@ -40,6 +40,8 @@ These checks cover the `.b4xlib` build, its manifest, and consumption from a hos
 | Read `manifest.txt` | `Author=Aeric Poon`, `Version=1.00`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, `Supported Platforms=B4J` |
 | Compare `#LibraryVersion` in `source/Pakai-Asadi.b4j` with the manifest | Equal; the script rejects a mismatch |
 | Edit a `source/` module without syncing its `demo/` copy, then package | The script stops with a source/demo drift error and writes no archive |
+| Add a UTF-8 BOM to one copy only | Packaging proceeds; a BOM-only difference is not drift |
+| Run a normal `-Task=Build` and then the package script | Packaging succeeds; the script discards the generated `Objects/src` and `Objects/bin` that a library build cannot reuse |
 | Keep a direct `SubExists(Main, ...)` reference in a library module | `BuildLibrary` fails with `Cannot access excluded module: main` |
 | Package with `-SkipBuild` | Archives the current sources without running the compiler |
 

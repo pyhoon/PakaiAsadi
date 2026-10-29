@@ -44,14 +44,28 @@ $OutputPath = [System.IO.Path]::GetFullPath($OutputPath)
 # Only these modules ship. main and DemoHomeHandler are demo-host code.
 $modules = @('AsadiHandler.bas', 'AsadiState.bas', 'PakaiAsadi.bas')
 
+# B4J's IDE may save sources with a UTF-8 BOM while a command-line copy has none.
+# Compare content without the BOM so the release check tracks real changes.
+function Get-ContentHash([string]$Path) {
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        $bytes = $bytes[3..($bytes.Length - 1)]
+    }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return ([System.BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '')
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
 foreach ($module in $modules) {
     $sourceFile = Join-Path $sourceDir $module
     if (-not (Test-Path -LiteralPath $sourceFile)) { throw "Missing library source: $sourceFile" }
     $demoFile = Join-Path $demoDir $module
     if (-not (Test-Path -LiteralPath $demoFile)) { throw "Missing demo copy: $demoFile" }
-    $sourceHash = (Get-FileHash -LiteralPath $sourceFile -Algorithm SHA256).Hash
-    $demoHash = (Get-FileHash -LiteralPath $demoFile -Algorithm SHA256).Hash
-    if ($sourceHash -ne $demoHash) {
+    if ((Get-ContentHash $sourceFile) -ne (Get-ContentHash $demoFile)) {
         throw "source/$module and demo/$module differ. Sync the demo copy before packaging."
     }
 }
@@ -71,6 +85,13 @@ if ($projectVersion -eq '' -or $projectVersion -ne $manifestVersion) {
 
 if ($SkipBuild -eq $false) {
     if (-not (Test-Path -LiteralPath $BuilderPath)) { throw "B4JBuilder not found: $BuilderPath" }
+    # A previous application build leaves a generated main.java that a library build
+    # cannot reuse (it imports the debug runtime). Drop only the generated source and
+    # class folders; keep the application jar and any runtime files under Objects.
+    foreach ($generated in 'src', 'bin') {
+        $generatedPath = Join-Path (Join-Path $sourceDir 'Objects') $generated
+        if (Test-Path -LiteralPath $generatedPath) { Remove-Item -LiteralPath $generatedPath -Recurse -Force }
+    }
     Write-Host "Building library from $sourceDir"
     & $BuilderPath '-Task=BuildLibrary' "-BaseFolder=$sourceDir" '-NoClean=True' '-ShowWarnings=True'
     if ($LASTEXITCODE -ne 0) { throw "BuildLibrary failed with exit code $LASTEXITCODE." }

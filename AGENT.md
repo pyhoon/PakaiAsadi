@@ -31,7 +31,8 @@ The command-line builder does not print the B4J IDE's warnings, even with `-Show
 
 - Keep `#LibraryName: PakaiAsadi`, `#LibraryVersion`, and `#LibraryAuthor` in `source/Pakai-Asadi.b4j` aligned with `source/manifest.txt`. The script refuses to package a version mismatch.
 - `manifest.txt` uses `Author=`, `Version=`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, and `Supported Platforms=B4J`. Verified: a host project listing only `jcore` and `pakaiasadi` builds and runs, and the merged jar contains `org/sqlite` even without `#AdditionalJar: sqlite-jdbc`.
-- The script refuses to package when the `source/` and `demo/` copies of a library module differ.
+- The script refuses to package when the `source/` and `demo/` copies of a library module differ. A leading UTF-8 BOM is ignored in that comparison because the B4J IDE may add one on save.
+- A library build cannot reuse the generated `main.java` whose imports come from an application build. The script deletes `source/Objects/src` and `source/Objects/bin` before compiling, leaving the application jar and any runtime files under `Objects` alone.
 - B4J loads additional libraries from `C:\B4X\Additional\B4J` (B4J-only) and `C:\B4X\Additional\B4X` (shared). Install the archive into the former. Verify a package with a scratch host that contains none of the Asadi modules, as in `tests/M5-checklist.md`; do not install test builds permanently.
 
 ## B4J coding conventions
