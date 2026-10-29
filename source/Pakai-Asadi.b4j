@@ -1,4 +1,4 @@
-AppType=StandardJava
+﻿AppType=StandardJava
 Build1=Default,b4j.pakai,hu2_acceptall
 Group=App
 Library1=endsmeet

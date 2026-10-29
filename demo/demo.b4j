@@ -1,4 +1,4 @@
-AppType=StandardJava
+﻿AppType=StandardJava
 Build1=Default,b4j.pakai,hu2_acceptall
 Build2=MariaDB,b4j.pakai,MariaDB,hu2_acceptall
 Build3=MySQL,b4j.pakai,MySQL,hu2_acceptall

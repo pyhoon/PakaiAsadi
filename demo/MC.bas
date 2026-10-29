@@ -1,4 +1,4 @@
-B4J=true
+﻿B4J=true
 Group=App
 ModulesStructureVersion=1
 Type=StaticCode
