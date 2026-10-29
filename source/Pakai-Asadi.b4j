@@ -20,10 +20,17 @@ Version=10.7
 ' packaged .b4xlib; the module itself stays a runnable demo host.
 #CommandLineArgs:
 #MergeLibraries: True
-#AdditionalJar: sqlite-jdbc
 #LibraryName: PakaiAsadi
 #LibraryVersion: 1.00
 #LibraryAuthor: Aeric Poon
+#AdditionalJar: sqlite-jdbc
+#End Region
+#Region  Macros
+#Macro: Title, Update Manifest, ide://run?File=%ADDITIONAL%\..\B4X\manifest-writer.jar&Args=%PROJECT%&Args=%PROJECT%&Args=Author&Args=Aeric+Poon&Args=Version&Args=1.00&Args=B4J.DependsOn&Args=EndsMeet,+MiniHTML,+MiniORMUtils,+sqlite-jdbc&Args=Supported+Platforms&Args=B4J
+#Macro: Title, Create B4xLib, ide://run?File=%JAVABIN%\jar.exe&WorkingDirectory=..\&Args=-cMf&Args=..\release\PakaiAsadi.b4xlib&Args=*Asadi*.bas&Args=manifest.txt&Args=..\LICENSE
+#Macro: Title, Release folder, ide://run?File=%WINDIR%\SysWOW64\explorer.exe&Args=%PROJECT%\..\release
+#Macro: Title, Copy to AddLibs, ide://run?File=%COMSPEC%&Args=/c&Args=copy&Args=%PROJECT%\..\release\*.b4xlib&Args=%ADDITIONAL%\..\B4X
+#Macro: Title, ModelGenerator, ide://run?File=%ADDITIONAL%\modgen.jar&Args=%STATE1%&codesync=True
 #End Region
 Sub Process_Globals
 	Public App As EndsMeet
