@@ -35,6 +35,23 @@ The command-line builder does not print the B4J IDE's warnings, even with `-Show
 - A library build cannot reuse the generated `main.java` whose imports come from an application build. The script deletes `source/Objects/src` and `source/Objects/bin` before compiling, leaving the application jar and any runtime files under `Objects` alone.
 - B4J loads additional libraries from `C:\B4X\Additional\B4J` (B4J-only) and `C:\B4X\Additional\B4X` (shared). Install the archive into the former. Verify a package with a scratch host that contains none of the Asadi modules, as in `tests/M5-checklist.md`; do not install test builds permanently.
 
+## Source encoding and Git
+
+The B4J IDE saves `.bas` and `.b4j` files as UTF-8 with a BOM. The BOM is harmless to the compiler but changes the file bytes, so Git and GitHub Desktop report a whole-file diff even when no code changed.
+
+`.gitattributes` maps both extensions to a clean filter named `stripbom`. Git does not run a filter just because an attribute names it, so each clone needs the command registered once:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup-git-filters.ps1
+git add --renormalize .
+```
+
+`tools/setup-git-filters.ps1` sets `filter.stripbom.clean` to `tools/strip-bom.ps1`, `filter.stripbom.smudge` to `cat`, and `filter.stripbom.required` to `true` in the repository's local config. The clean filter removes one leading BOM when content is staged or diffed; the working tree keeps whatever the IDE wrote. The smudge command is deliberately a pass-through so checkout does not inject a BOM the IDE did not write. Because the setting is local, a fresh clone must run the setup before its first commit; without it, Git ignores the attribute and commits the BOM.
+
+`* text=auto` does not solve this. It normalizes CRLF/LF only and leaves `EF BB BF` in the blob. A `working-tree-encoding=UTF-8` attribute also leaves the BOM in the blob; both were tested and rejected. Do not add either as a substitute.
+
+A BOM-only working-tree change must produce a clean `git status`, while a real edit must still show as modified. Check both after changing the filter. The packaging script already ignores a leading BOM when comparing `source/` and `demo/` copies, so the filter and the parity check agree.
+
 ## B4J coding conventions
 
 - B4J warning #35: put the `Object`-returning expression on the right side of a comparison so B4J compares by value. Write `If 1 = Column.Get("notnull") Then`, `If False = KeyResult.Get("ok") Then`, `If 0 < Column.Get("pk") Then`, and `If ColumnName = Column.Get("name") Then`; do not write the reversed forms. Apply the same rule to any variable or function result typed `As Object`.

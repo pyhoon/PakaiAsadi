@@ -107,6 +107,8 @@ cd source
 
 `source/data/demo.db` is created by the demo host on first run and is excluded from version control. Apply [tests/M2-fixture.sql](tests/M2-fixture.sql) with the `sqlite3` CLI to add representative tables, a view, an index, a trigger, NULLs, BLOBs, and enough rows to exercise paging and search. Do not run fixtures against the user-created `demo/Objects/pakai.db`.
 
+If you build in the B4J IDE, it may add a UTF-8 BOM when saving a `.bas` or `.b4j` file. Run `tools\setup-git-filters.ps1` once per clone so Git strips that BOM from commits and GitHub Desktop stops showing BOM-only diffs. The filter setup and the reason `* text=auto` is not enough are documented in [AGENT.md](AGENT.md#source-encoding-and-git).
+
 The source reconnaissance and plug-in library evaluation (Lanyard, Vest, Watch) are in [RECONNAISSANCE.md](RECONNAISSANCE.md).
 
 ## Known limitations

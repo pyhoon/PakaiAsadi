@@ -1,0 +1,5 @@
+# The B4J IDE saves .bas and .b4j files with a UTF-8 BOM. Commit a BOM-free
+# blob so an IDE save that only added the BOM does not appear as a diff.
+# One-time setup per clone: tools/setup-git-filters.ps1
+*.bas filter=stripbom
+*.b4j filter=stripbom
