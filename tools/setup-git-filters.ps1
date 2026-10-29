@@ -31,12 +31,20 @@ if (-not (Test-Path -LiteralPath $filterScript)) {
 $filterPath = ($filterScript -replace '\\', '/')
 $cleanCommand = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + $filterPath + '"'
 
+$smudgeScript = Join-Path $repoRoot 'tools/add-bom.ps1'
+if (-not (Test-Path -LiteralPath $smudgeScript)) {
+    throw "Missing filter script: $smudgeScript"
+}
+$smudgePath = ($smudgeScript -replace '\\', '/')
+$smudgeCommand = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' + $smudgePath + '"'
+
 & git -C $repoRoot config --local filter.stripbom.clean $cleanCommand
 if ($LASTEXITCODE -ne 0) { throw 'Failed to set filter.stripbom.clean' }
 
-# Passing content through on checkout keeps the working tree identical to the
-# committed bytes. B4J adds the BOM again the next time it saves the file.
-& git -C $repoRoot config --local filter.stripbom.smudge 'cat'
+# Checkout restores the BOM so the working tree matches what B4J writes. That
+# keeps the file size stable across IDE saves, which is what lets git status
+# stay clean instead of showing a size-only change.
+& git -C $repoRoot config --local filter.stripbom.smudge $smudgeCommand
 if ($LASTEXITCODE -ne 0) { throw 'Failed to set filter.stripbom.smudge' }
 
 # Fail loudly if the filter disappears instead of silently committing BOMs.
@@ -45,7 +53,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to set filter.stripbom.required' }
 
 Write-Host "Registered filter.stripbom in $repoRoot"
 Write-Host "  clean:  $cleanCommand"
-Write-Host "  smudge: cat"
+Write-Host "  smudge: $smudgeCommand"
 Write-Host "  required: true"
 Write-Host ''
-Write-Host 'Run "git add --renormalize ." once to strip BOMs from existing blobs.'
+Write-Host 'Run "git add --renormalize ." once to strip BOMs from existing blobs,'
+Write-Host 'then "git add ." once more so the index records the working-tree sizes.'

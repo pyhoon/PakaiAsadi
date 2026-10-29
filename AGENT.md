@@ -46,7 +46,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup-git-filters.ps1
 git add --renormalize .
 ```
 
-`tools/setup-git-filters.ps1` sets `filter.stripbom.clean` to `tools/strip-bom.ps1`, `filter.stripbom.smudge` to `cat`, and `filter.stripbom.required` to `true` in the repository's local config. The clean filter removes one leading BOM when content is staged or diffed; the working tree keeps whatever the IDE wrote. The smudge command is deliberately a pass-through so checkout does not inject a BOM the IDE did not write. Because the setting is local, a fresh clone must run the setup before its first commit; without it, Git ignores the attribute and commits the BOM.
+`tools/setup-git-filters.ps1` sets `filter.stripbom.clean` to `tools/strip-bom.ps1`, `filter.stripbom.smudge` to `tools/add-bom.ps1`, and `filter.stripbom.required` to `true` in the repository's local config. The clean filter removes one leading BOM when content is staged or diffed; the smudge filter puts it back on checkout. That round trip keeps committed blobs BOM-free while the working tree matches what the B4J IDE writes.
+
+The smudge side matters. With a pass-through smudge, a checkout produced a BOM-free file, then the first IDE save added three bytes. Git updates the index stat before it compares filtered content, so `git status` and GitHub Desktop listed the file as modified while `git diff` showed nothing ("No content changes found"). A save that only rewrites an existing BOM keeps the size stable and stays clean. Restoring the BOM on checkout removes that size-only change. The same stale stat rows are left by `git add --renormalize`, which records the filtered size; run `git add .` once after the renormalize commit so the index records the working-tree sizes.
+
+Because the setting is local, a fresh clone must run the setup before its first commit; without it, Git ignores the attribute and commits the BOM.
 
 `* text=auto` does not solve this. It normalizes CRLF/LF only and leaves `EF BB BF` in the blob. A `working-tree-encoding=UTF-8` attribute also leaves the BOM in the blob; both were tested and rejected. Do not add either as a substitute.
 
