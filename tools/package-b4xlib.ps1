@@ -82,6 +82,7 @@ try {
         Copy-Item -LiteralPath (Join-Path $sourceDir $module) -Destination (Join-Path $staging $module)
     }
     Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $staging 'manifest.txt')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $staging 'LICENSE')
 
     $outputDir = Split-Path -Parent $OutputPath
     if (-not (Test-Path -LiteralPath $outputDir)) {

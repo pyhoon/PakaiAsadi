@@ -47,7 +47,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\package-b4xlib.ps1
 Copy-Item -LiteralPath release\PakaiAsadi.b4xlib -Destination C:\B4X\Additional\B4J\
 ```
 
-Restart B4J, then add `PakaiAsadi` to the host project's libraries. The archive contains `AsadiHandler`, `AsadiState`, and `PakaiAsadi` plus `manifest.txt`; it does not include the demo `main` or `DemoHomeHandler`. Its `B4J.DependsOn` entry names EndsMeet, MiniHTML, MiniORMUtils, and `sqlite-jdbc`, so B4J resolves those libraries and the JDBC driver; a project that manages libraries manually should add them explicitly and keep `#AdditionalJar: sqlite-jdbc`.
+Restart B4J, then add `PakaiAsadi` to the host project's libraries. The archive contains `AsadiHandler`, `AsadiState`, and `PakaiAsadi` plus `manifest.txt` and `LICENSE`; it does not include the demo `main` or `DemoHomeHandler`. Its `B4J.DependsOn` entry names EndsMeet, MiniHTML, MiniORMUtils, and `sqlite-jdbc`, so B4J resolves those libraries and the JDBC driver; a project that manages libraries manually should add them explicitly and keep `#AdditionalJar: sqlite-jdbc`.
 
 The host supplies the authorization sub in its main code module. B4J always names that module `Main`, and the library resolves it by name so the callback is reachable from an `.b4xlib`. Call the public API from `AppStart` before `App.Start`. The library never starts a listener, never creates a database, and refuses to register routes when the callback is missing. Only one Asadi instance can be configured per host process.
 

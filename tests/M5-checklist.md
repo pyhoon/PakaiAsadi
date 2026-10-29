@@ -24,6 +24,7 @@ These checks cover the `.b4xlib` build, its manifest, and consumption from the d
    AsadiState.bas
    PakaiAsadi.bas
    manifest.txt
+   LICENSE
    ```
 
 4. Copy `release/PakaiAsadi.b4xlib` to `C:\B4X\Additional\B4J\`, then build the demo. It resolves the three modules from the archive and must build with no Asadi `.bas` file in `demo/`.
@@ -38,7 +39,7 @@ These checks cover the `.b4xlib` build, its manifest, and consumption from the d
 | Case | Expected |
 |---|---|
 | Run the script with a clean `source/` | `BuildLibrary` ends with `Completed successfully`; `release/PakaiAsadi.b4xlib` is created |
-| Inspect the archive | Only the three library modules plus `manifest.txt`; `main` and `DemoHomeHandler` are absent |
+| Inspect the archive | Only the three library modules, `manifest.txt`, and `LICENSE`; `main` and `DemoHomeHandler` are absent |
 | Read `manifest.txt` | `Author=Aeric Poon`, `Version=1.00`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, `Supported Platforms=B4J` |
 | Compare `#LibraryVersion` in `source/Pakai-Asadi.b4j` with the manifest | Equal; the script rejects a mismatch |
 | Run a normal `-Task=Build` and then the package script | Packaging succeeds; the script discards the generated `Objects/src` and `Objects/bin` that a library build cannot reuse |

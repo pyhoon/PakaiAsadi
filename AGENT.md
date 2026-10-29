@@ -27,10 +27,10 @@ The command-line builder does not print the B4J IDE's warnings, even with `-Show
 
 ## Packaging the library
 
-`tools/package-b4xlib.ps1` runs the library build and writes `release/PakaiAsadi.b4xlib`. A B4J `.b4xlib` is a plain zip with the `.bas` files and `manifest.txt` at its root; the script's value is the version check and build orchestration, not a proprietary archive format. The package contains only `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, and `manifest.txt`; `main` and `DemoHomeHandler` are demo-host code and are excluded.
+`tools/package-b4xlib.ps1` runs the library build and writes `release/PakaiAsadi.b4xlib`. A B4J `.b4xlib` is a plain zip with the `.bas` files, `manifest.txt`, and `LICENSE` at its root; the script's value is the version check and build orchestration, not a proprietary archive format. The package contains only `AsadiHandler.bas`, `AsadiState.bas`, `PakaiAsadi.bas`, `manifest.txt`, and `LICENSE`; `main` and `DemoHomeHandler` are demo-host code and are excluded.
 
 - Keep `#LibraryName: PakaiAsadi`, `#LibraryVersion`, and `#LibraryAuthor` in `source/Pakai-Asadi.b4j` aligned with `source/manifest.txt`. The script refuses to package a version mismatch.
-- To assemble the archive without the script, use the JDK's `jar`: put the three modules and `manifest.txt` at the root of a staging folder, then run `jar -cMf release\PakaiAsadi.b4xlib -C <staging> .`. `-M` omits `META-INF/MANIFEST.MF`, which B4J does not need.
+- To assemble the archive without the script, use the JDK's `jar`: put the three modules, `manifest.txt`, and `LICENSE` at the root of a staging folder, then run `jar -cMf release\PakaiAsadi.b4xlib -C <staging> .`. `-M` omits `META-INF/MANIFEST.MF`, which B4J does not need.
 - `manifest.txt` uses `Author=`, `Version=`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, and `Supported Platforms=B4J`. Verified: a host project listing only `jcore` and `pakaiasadi` builds and runs, and the merged jar contains `org/sqlite` even without `#AdditionalJar: sqlite-jdbc`.
 - The script refuses to package a project whose `#LibraryName` or `#LibraryVersion` disagrees with `manifest.txt`.
 - `demo/demo.b4j` consumes `release/PakaiAsadi.b4xlib` as the `pakaiasadi` library. Package the archive and copy it into `C:\B4X\Additional\B4J` before building the demo. The demo holds no copies of the library modules, so there is nothing to keep in sync.
