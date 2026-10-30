@@ -54,7 +54,7 @@ Public Sub Render As MiniHtml
 	PUI.StyleSheet(head1, "/assets/css/bootstrap-icons.min.css?v=" & IconsVersion)
 	PUI.StyleSheet(head1, "/assets/css/pakaiui.css?v=" & PUI.VERSION)
 	PUI.StyleSheet(head1, "/assets/css/pakaiui-asadi.css?v=" & PUI.VERSION)
-	Dim icon1 As MiniHtml = Tag("link")
+	Dim icon1 As MiniHtml = MH.CreateTag("link")
 	icon1.attr("rel", "icon")
 	icon1.attr("type", "image/png")
 	icon1.attr("href", "/assets/img/favicon.png")
@@ -63,11 +63,11 @@ Public Sub Render As MiniHtml
 	Dim body1 As MiniHtml = PUI.Body(page1)
 	AddSidebar(body1)
 
-	Dim main1 As MiniHtml = Tag("div").cls("pui-asadi-main")
+	Dim main1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-main")
 	main1.up(body1)
 	AddTopbar(main1)
 
-	Dim content1 As MiniHtml = Tag("div").cls("pui-asadi-content")
+	Dim content1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-content")
 	content1.up(main1)
 	AddHeader(content1)
 	If Initialized(mContent) Then mContent.up(content1)
@@ -98,14 +98,14 @@ Private Sub AddSidebar (Parent As MiniHtml)
 	Dim side1 As MiniHtml = PUI.Sidebar(sideOptions)
 	side1.up(Parent)
 
-	Dim foot1 As MiniHtml = Tag("div").cls("pui-asadi-sidefoot")
+	Dim foot1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-sidefoot")
 	foot1.up(side1)
-	Tag("span").cls("status-dot").up(foot1)
+	MH.CreateTag("span").cls("status-dot").up(foot1)
 	PUI.AddText(foot1, " SQLite workspace")
 End Sub
 
 Private Sub AddTopbar (Parent As MiniHtml)
-	Dim bar1 As MiniHtml = Tag("header").cls("pui-asadi-topbar")
+	Dim bar1 As MiniHtml = MH.CreateTag("header").cls("pui-asadi-topbar")
 	bar1.up(Parent)
 
 	Dim crumbOptions As PUIBreadcrumbOptions = PUI.NewBreadcrumbOptions
@@ -116,7 +116,7 @@ Private Sub AddTopbar (Parent As MiniHtml)
 	crumbOptions.Items.Add(currentCrumb)
 	PUI.Breadcrumb(crumbOptions).up(bar1)
 
-	Dim actions1 As MiniHtml = Tag("div").cls("pui-asadi-topbar-actions")
+	Dim actions1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-topbar-actions")
 	actions1.up(bar1)
 	Dim badgeOptions As PUIBadgeOptions = PUI.NewBadgeOptions("Demo")
 	badgeOptions.Variant = PUI.VariantLight
@@ -132,7 +132,7 @@ End Sub
 
 Private Sub AddHeader (Parent As MiniHtml)
 	If mPageTitle = "" Then Return
-	Dim eyebrow1 As MiniHtml = Tag("div").cls("pui-asadi-eyebrow")
+	Dim eyebrow1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-eyebrow")
 	eyebrow1.up(Parent)
 	PUI.AddText(eyebrow1, "PAKAI ASADI")
 
@@ -143,7 +143,7 @@ Private Sub AddHeader (Parent As MiniHtml)
 End Sub
 
 Private Sub AddFooter (Parent As MiniHtml)
-	Dim footer1 As MiniHtml = Tag("footer").cls("pui-asadi-footer")
+	Dim footer1 As MiniHtml = MH.CreateTag("footer").cls("pui-asadi-footer")
 	footer1.up(Parent)
 	PUI.AddText(footer1, "Pakai Asadi " & Main.APP_VERSION & " - PakaiUI " & PUI.VERSION & " - Bootstrap " & BootstrapVersion)
 End Sub
@@ -152,10 +152,4 @@ Private Sub MakeNavItem (Text As String, Href As String, Key As String) As PUINa
 	Dim item1 As PUINavItemOptions = PUI.NewNavItemOptions(Text, Href)
 	If Key = mActiveKey Then item1.Active = True
 	Return item1
-End Sub
-
-Private Sub Tag (Name As String) As MiniHtml
-	Dim tag1 As MiniHtml
-	tag1.Initialize(Name)
-	Return tag1
 End Sub

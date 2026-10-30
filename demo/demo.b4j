@@ -35,6 +35,7 @@ Module17=ProductsHandler
 Module18=ProductsModel
 Module19=ProductsView
 Module2=AuthHandler
+Module20=UI
 Module3=AuthModel
 Module4=AuthView
 Module5=CategoriesApiHandler
@@ -44,7 +45,7 @@ Module8=CategoriesView
 Module9=FindApiHandler
 NumberOfFiles=5
 NumberOfLibraries=10
-NumberOfModules=19
+NumberOfModules=20
 Version=10.7
 @EndOfDesignText@
 #Region  Project Attributes

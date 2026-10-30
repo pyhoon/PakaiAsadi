@@ -371,10 +371,6 @@ Public Sub ContainerToast As MiniHtml
 	.down(ButtonClose.cls("btn-close-white me-2 m-auto").attr("data-bs-dismiss", "toast")).Parent.Parent.Parent
 End Sub
 
-Public Sub ModalHeader (text As String) As MiniHtml
-	Return Div.cls("modal-header").down(H5).cls("modal-title").text(text).Parent.down(ButtonClose).Parent
-End Sub
-
 Public Sub ModalBody As MiniHtml
 	Return Div.cls("modal-body")
 End Sub

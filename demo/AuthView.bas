@@ -40,36 +40,36 @@ Private Sub AuthPage (Title As String, Subtitle As String, Eyebrow As String, Me
 	PUI.StyleSheet(head1, "/assets/css/bootstrap-icons.min.css?v=" & IconsVersion)
 	PUI.StyleSheet(head1, "/assets/css/pakaiui.css?v=" & PUI.VERSION)
 	PUI.StyleSheet(head1, "/assets/css/pakaiui-asadi.css?v=" & PUI.VERSION)
-	Dim icon1 As MiniHtml = Tag("link")
+	Dim icon1 As MiniHtml = MH.CreateTag("link")
 	icon1.attr("rel", "icon")
 	icon1.attr("type", "image/png")
 	icon1.attr("href", "/assets/img/favicon.png")
 	icon1.up(head1)
 
 	Dim body1 As MiniHtml = PUI.Body(page1)
-	Dim wrap1 As MiniHtml = Tag("div").cls("pui-asadi-auth")
+	Dim wrap1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-auth")
 	wrap1.up(body1)
-	Dim card1 As MiniHtml = Tag("div").cls("pui-asadi-auth-card")
+	Dim card1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-auth-card")
 	card1.up(wrap1)
 
-	Dim brand1 As MiniHtml = Tag("div").cls("pui-asadi-auth-brand")
+	Dim brand1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-auth-brand")
 	brand1.up(card1)
-	Dim mark1 As MiniHtml = Tag("span").cls("pui-asadi-auth-mark")
+	Dim mark1 As MiniHtml = MH.CreateTag("span").cls("pui-asadi-auth-mark")
 	mark1.text("P")
 	mark1.up(brand1)
-	Dim appName1 As MiniHtml = Tag("span")
+	Dim appName1 As MiniHtml = MH.CreateTag("span")
 	appName1.text("$APP_TITLE$")
 	appName1.up(brand1)
 
-	Dim eyebrow1 As MiniHtml = Tag("div").cls("pui-asadi-auth-eyebrow")
+	Dim eyebrow1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-auth-eyebrow")
 	eyebrow1.text(Eyebrow)
 	eyebrow1.up(card1)
 
-	Dim title1 As MiniHtml = Tag("h1").cls("pui-asadi-auth-title")
+	Dim title1 As MiniHtml = MH.CreateTag("h1").cls("pui-asadi-auth-title")
 	title1.text(Title)
 	title1.up(card1)
 
-	Dim sub1 As MiniHtml = Tag("p").cls("pui-asadi-auth-sub")
+	Dim sub1 As MiniHtml = MH.CreateTag("p").cls("pui-asadi-auth-sub")
 	sub1.text(Subtitle)
 	sub1.up(card1)
 
@@ -81,15 +81,15 @@ Private Sub AuthPage (Title As String, Subtitle As String, Eyebrow As String, Me
 
 	Content.up(card1)
 
-	Dim foot1 As MiniHtml = Tag("div").cls("pui-asadi-auth-foot")
+	Dim foot1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-auth-foot")
 	foot1.up(card1)
 	PUI.AddText(foot1, FootPrompt & " ")
-	Dim link1 As MiniHtml = Tag("a")
+	Dim link1 As MiniHtml = MH.CreateTag("a")
 	link1.attr("href", FootHref)
 	link1.text(FootLinkText)
 	link1.up(foot1)
 
-	Dim meta1 As MiniHtml = Tag("div").cls("pui-asadi-auth-meta")
+	Dim meta1 As MiniHtml = MH.CreateTag("div").cls("pui-asadi-auth-meta")
 	meta1.up(card1)
 	PUI.AddText(meta1, "Pakai Asadi " & Main.APP_VERSION & " - PakaiUI " & PUI.VERSION)
 	Return page1
@@ -136,7 +136,7 @@ Private Sub RegisterForm As MiniHtml
 End Sub
 
 Private Sub Form (Action As String) As MiniHtml
-	Dim form1 As MiniHtml = Tag("form")
+	Dim form1 As MiniHtml = MH.CreateTag("form")
 	form1.attr("method", "post")
 	form1.attr("action", Action)
 	Return form1
@@ -148,10 +148,4 @@ Private Sub SubmitButton (Text As String) As PUIButtonOptions
 	options1.Variant = PUI.VariantPrimary
 	options1.CssClass = "w-100 mt-2"
 	Return options1
-End Sub
-
-Private Sub Tag (Name As String) As MiniHtml
-	Dim tag1 As MiniHtml
-	tag1.Initialize(Name)
-	Return tag1
 End Sub
