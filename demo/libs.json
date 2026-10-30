@@ -8,6 +8,12 @@
             "Link": "https://github.com/pyhoon/PakaiAsadi/releases/download/v1.00/PakaiAsadi.b4xlib"
         },
         {
+            "Name": "PakaiUI.b4xlib",
+            "Platform": "B4J",
+            "Version": 0.15,
+            "Link": "https://github.com/pyhoon/PakaiUI/releases/download/v0.15.0/PakaiUI.b4xlib"
+        },
+        {
             "Name": "EndsMeet.b4xlib",
             "Platform": "B4J",
             "Version": 4.03,

@@ -14,7 +14,7 @@ This checkout contains the B4J source project, two demo hosts (`source/` compile
 - `Pakai-Asadi.b4j` - demo host, configured to listen on port 8080 and serve both `/` and `/asadi` from one EndsMeet instance; its project attributes also describe the packaged library.
 - `manifest.txt` - author, version, dependencies, and supported platform for the `.b4xlib`.
 - `tools/package-b4xlib.ps1` - runs the library build and assembles `release/PakaiAsadi.b4xlib`.
-- `libs.json` - EndsMeet 4.03 and Xerial SQLite JDBC 3.53.2.1, matching the driver installed in the current B4J environment. PakaiUI 0.15 (`pakaiui`) is installed manually because it is not published to a remote library feed yet.
+- `libs.json` - EndsMeet 4.03 and Xerial SQLite JDBC 3.53.2.1, matching the driver installed in the current B4J environment. PakaiUI 0.15 (`pakaiui`) is a separate download from the [PakaiUI releases](https://github.com/pyhoon/PakaiUI/releases).
 
 Both `source/Pakai-Asadi.b4j` and `demo/demo.b4j` compile with B4JBuilder 10.70 using `-Task=Build -NoClean=True -ShowWarnings=True`. The demo ticks `pakaiasadi` instead of embedding the library modules, so build and install `release/PakaiAsadi.b4xlib` first. The standalone `source` host was launched on 2026-10-28 and its M1-M4 pages and write paths were exercised against a disposable SQLite file; the Lanyard demo host was exercised separately on a disposable copy of `pakai.db`. See [tests/M2-checklist.md](tests/M2-checklist.md), [tests/M3-checklist.md](tests/M3-checklist.md), and [tests/M4-checklist.md](tests/M4-checklist.md). The Lanyard host flow remains application-specific and is covered by [tests/M1-checklist.md](tests/M1-checklist.md). M5 covers the packaged `.b4xlib`, including the demo's consumer build, in [tests/M5-checklist.md](tests/M5-checklist.md).
 
@@ -94,17 +94,19 @@ The SQL workspace runs one validated statement at a time and caps output at 200 
 - Xerial `org.xerial:sqlite-jdbc:3.53.2.1` (installed as `sqlite-jdbc.jar`).
 - MiniHTML 4.02 and MiniORMUtils 6.04, plus B4J `JavaObject` and `jSQL` libraries.
 - PakaiUI 0.15 (`pakaiui`) for the demo's page shell, authentication pages, tables, forms and the shared
-  `pakaiui-asadi.css` theme.
+  `pakaiui-asadi.css` theme, distributed on the [PakaiUI releases](https://github.com/pyhoon/PakaiUI/releases)
+  page.
 
-Open `demo/demo.b4j` in B4J, use the IDE library installer with `demo/libs.json`, and install `release/PakaiAsadi.b4xlib` into `C:\B4X\Additional\B4J` (the demo ticks `pakaiasadi` and contains no Asadi modules), then run its Default (SQLite) build. Asadi registers only the host-configured SQLite database and does not create database files. Open `http://127.0.0.1:8080/` and navigate to `/asadi` after logging in as a user with the `admin` role. The starter template's `Objects` database/config are treated as host data and are not modified by Asadi.
+Open `demo/demo.b4j` in B4J, use the IDE library installer with `demo/libs.json` (it lists PakaiUI 0.15 and the other remote libraries), and install `release/PakaiAsadi.b4xlib` into `C:\B4X\Additional\B4J` (the demo ticks `pakaiasadi` and contains no Asadi modules), then run its Default (SQLite) build. Asadi registers only the host-configured SQLite database and does not create database files. Open `http://127.0.0.1:8080/` and navigate to `/asadi` after logging in as a user with the `admin` role. The starter template's `Objects` database/config are treated as host data and are not modified by Asadi.
 
-The demo also ticks `pakaiui`. Build and install `C:\Projects\PakaiUI\source\Objects\PakaiUI.b4xlib` into `C:\B4X\Additional\B4J` (run `build_b4xlib.bat` in that folder first if needed), then copy the tracked PakaiUI frontend assets into the demo's web root:
+The demo also ticks `pakaiui`; `demo/libs.json` resolves it from the [PakaiUI v0.15.0 release](https://github.com/pyhoon/PakaiUI/releases/tag/v0.15.0). If you install libraries by hand, download `PakaiUI.b4xlib` from that release and copy it into `C:\B4X\Additional\B4J`. Either way, sync the tracked frontend assets from a PakaiUI checkout or source archive into the demo's web root:
 
 ```powershell
+git clone https://github.com/pyhoon/PakaiUI.git C:\Projects\PakaiUI
 cmd /c C:\Projects\PakaiUI\sync-assets.bat C:\Projects\pakai-asadi\demo
 ```
 
-`sync-assets.bat` is additive: it copies Bootstrap, Bootstrap Icons, HTMX, Alpine, `pakaiui.css` and `pakaiui-asadi.css` into `demo/Objects/www/assets` and leaves the demo's `main.css`, `app.js` and images in place. The login and registration pages, the workspace shell and the product/category views use the PakaiUI components and the shared `.pui-asadi` theme. The generated `/help` API reference keeps its own self-contained documentation theme.
+`sync-assets.bat` resolves its `assets` folder relative to the script, so it works from any checkout or unpacked source archive. It is additive: it copies Bootstrap, Bootstrap Icons, HTMX, Alpine, `pakaiui.css` and `pakaiui-asadi.css` into `demo/Objects/www/assets` and leaves the demo's `main.css`, `app.js` and images in place. The login and registration pages, the workspace shell and the product/category views use the PakaiUI components and the shared `.pui-asadi` theme. The generated `/help` API reference keeps its own self-contained documentation theme.
 
 The demo's `main` module sits in `demo.b4j` and its `#If Release` block sets `App.ssl.Enabled = True`. EndsMeet then registers its `HttpsFilter`, and its SSL settings come from a `.env` file in `Files/` (bundled into `DirAssets`), which the demo does not include. Without a configured keystore and `SSL_PORT`, the server logs `Ssl KeystoreFile is not set` and redirects HTTP requests to `https://127.0.0.1:` with an empty port, so the demo is unreachable over HTTP. Either add a `.env` with `SSL_ENABLED`, `SSL_PORT`, `SSL_KEYSTORE_DIR`, `SSL_KEYSTORE_FILE`, and `SSL_KEYSTORE_PASSWORD` plus a matching keystore to `demo/Files/`, or build the demo with `App.ssl.Enabled = False` for local HTTP testing. Do not commit a local SSL-disable patch.
 

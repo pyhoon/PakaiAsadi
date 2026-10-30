@@ -17,6 +17,8 @@ Asadi is not a standalone application. It registers pages on the server you alre
 
 The `.b4xlib` declares these as `B4J.DependsOn`, so the B4J IDE adds them when you add Asadi. If you manage libraries by hand, install them first.
 
+The bundled demo also renders its pages with PakaiUI 0.15. Asadi itself does not depend on PakaiUI; you only need it to build the demo.
+
 ## 2. Install the library
 
 If you received a release archive, skip the build command and copy that file into the additional libraries folder. To build it from this repository:
@@ -57,6 +59,15 @@ Canonical paths are checked, so `..`, symlinks, and files outside the allowed di
 ## 4. Integrate with a Pakai Server template
 
 The included `demo/demo.b4j` is a working example based on the Pakai Server/Lanyard template. It consumes the packaged archive exactly as an integrator would: tick `pakaiasadi` and install `release/PakaiAsadi.b4xlib` into `C:\B4X\Additional\B4J` before building; the demo contains no Asadi modules. The template already provides `EndsMeet`, `MiniORM` (`ORM`), the global `AuthFilter`, and `tbl_users` with a `role` column.
+
+The demo also ticks `pakaiui`. Download `PakaiUI.b4xlib` from the [PakaiUI v0.15.0 release](https://github.com/pyhoon/PakaiUI/releases/tag/v0.15.0) and install it in the same folder. Then sync PakaiUI's frontend assets from a checkout or source archive into the demo's web root:
+
+```powershell
+git clone https://github.com/pyhoon/PakaiUI.git C:\Projects\PakaiUI
+cmd /c C:\Projects\PakaiUI\sync-assets.bat C:\Projects\pakai-asadi\demo
+```
+
+The script resolves its `assets` folder relative to itself and copies the CSS/JS into `demo/Objects/www/assets` without touching the demo's own files. Without it, the demo pages render unstyled.
 
 ### 4.1 Declare the component
 
@@ -251,6 +262,8 @@ Built-in protections you do not need to add: the fail-closed authorization callb
 |---|---|
 | `/asadi` returns `404` | `Start` was not called, returned `False`, or ran after `App.Start`. Check the log for `routes were not registered` or a `BasePath` overlap. |
 | Redirected to `/login` | Your global auth filter rejected the request. Log in first. |
+| Demo build cannot find `pakaiui` | Install `PakaiUI.b4xlib` from the [PakaiUI releases](https://github.com/pyhoon/PakaiUI/releases) into `C:\B4X\Additional\B4J` and restart B4J. |
+| Demo pages are unstyled or `/assets/css/pakaiui.css` returns `404` | PakaiUI assets were not synced. Run PakaiUI's `sync-assets.bat` against the demo folder, then rebuild. |
 | Demo redirects to `https://127.0.0.1:` | The demo's Release build enables SSL but ships no `.env`. Add SSL settings or build locally with `App.ssl.Enabled = False`. |
 | `403 Administration access is not configured` | The main module has no `Public Sub` with the name passed to `Initialize`. |
 | `403 You are not authorized to administer databases` | `AuthorizeAsadi` returned `False`, or the `role` session attribute is not `admin`. |
