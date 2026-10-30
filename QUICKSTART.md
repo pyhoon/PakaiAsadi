@@ -10,10 +10,10 @@ Asadi is not a standalone application. It registers pages on the server you alre
 |---|---|
 | B4J | 10.7 or newer |
 | EndsMeet | 4.03 |
-| MiniHTML | 4.02 |
+| MiniHTML | 4.05 (4.04 or newer required) |
 | MiniORMUtils | 6.04 |
 | Xerial `sqlite-jdbc` | 3.53.2.1 |
-| Pakai Asadi | 1.00 (`.b4xlib`) |
+| Pakai Asadi | 1.01 (`.b4xlib`) |
 
 The `.b4xlib` declares these as `B4J.DependsOn`, so the B4J IDE adds them when you add Asadi. If you manage libraries by hand, install them first.
 

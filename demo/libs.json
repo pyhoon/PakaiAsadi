@@ -4,8 +4,8 @@
         {
             "Name": "PakaiAsadi.b4xlib",
             "Platform": "B4J",
-            "Version": 1.00,
-            "Link": "https://github.com/pyhoon/PakaiAsadi/releases/download/v1.00/PakaiAsadi.b4xlib"
+            "Version": 1.01,
+            "Link": "https://github.com/pyhoon/PakaiAsadi/releases/download/v1.01/PakaiAsadi.b4xlib"
         },
         {
             "Name": "PakaiUI.b4xlib",
@@ -29,9 +29,9 @@
         {
             "Name": "MiniHTML.b4xlib",
             "Platform": "B4X",
-            "Version": 4.02,
-            "Link": "https://github.com/pyhoon/MiniHTML4/releases/download/v4.02/MiniHTML.b4xlib",
-            "Update": "https://github.com/pyhoon/MiniHTML4/releases/download/v4.02/update.json"
+            "Version": 4.05,
+            "Link": "https://github.com/pyhoon/MiniHTML4/releases/download/v4.05/MiniHTML.b4xlib",
+            "Update": "https://github.com/pyhoon/MiniHTML4/releases/download/v4.05/update.json"
         },
         {
             "Name": "MiniJS.b4xlib",

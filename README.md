@@ -68,7 +68,7 @@ The host supplies the authorization sub in its main code module. B4J always name
 - MiniORMUtils opens the registered file with `createIfNecessary=False`, so an absent file is not created. Each metadata request enables SQLite `PRAGMA query_only=ON` on its private connection. SQL identifiers come only from verified schema metadata and are quoted; search values are bound parameters.
 - The SQL workspace opens its own JDBC connection with SQLite `open_mode=1` (read-only) because MiniORMUtils cannot distinguish BLOBs reliably. The read-only handle plus statement validation enforce the no-write policy; user statements run on that handle, while metadata pages keep using MiniORMUtils with `PRAGMA query_only=ON`.
 - Row edits and exports open short-lived JDBC handles: `open_mode=2` (read-write, no create) for `POST` edit actions and `open_mode=1` for exports. Write connections are used only after the host gate, origin check, and CSRF check pass, and every value is bound as a parameter.
-- MiniHTML builds the page tree. Database-controlled text is escaped with EndsMeet before `.text` because MiniHTML does not escape text automatically.
+- MiniHTML builds the page tree. MiniHTML 4.04+ escapes `.text` values itself, so database-controlled text is passed raw; attribute values are still escaped with EndsMeet before `.attr` because MiniHTML does not escape attributes.
 - Absolute paths and raw database errors are not shown in HTML.
 
 ### Browser limits
@@ -92,7 +92,7 @@ The SQL workspace runs one validated statement at a time and caps output at 200 
 - B4J 10.7+ (matches current Pakai Server 6.99 project metadata).
 - EndsMeet 4.03.
 - Xerial `org.xerial:sqlite-jdbc:3.53.2.1` (installed as `sqlite-jdbc.jar`).
-- MiniHTML 4.02 and MiniORMUtils 6.04, plus B4J `JavaObject` and `jSQL` libraries.
+- MiniHTML 4.05 (4.04 or newer; `.text` escapes by default) and MiniORMUtils 6.04, plus B4J `JavaObject` and `jSQL` libraries.
 - PakaiUI 0.15 (`pakaiui`) for the demo's page shell, authentication pages, tables, forms and the shared
   `pakaiui-asadi.css` theme, distributed on the [PakaiUI releases](https://github.com/pyhoon/PakaiUI/releases)
   page.

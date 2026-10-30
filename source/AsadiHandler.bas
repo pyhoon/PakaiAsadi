@@ -345,7 +345,7 @@ Private Sub WriteSqlWorkspace (resp As ServletResponse, DbName As String, req As
 	Dim Area As MiniHtml = NewTag(Form, "textarea", "sql-input")
 	Area.attr("name", "sql").attr("rows", "8").attr("spellcheck", "false").attr("maxlength", "" & MAX_SQL_LENGTH)
 	Area.attr("placeholder", "SELECT name, type FROM sqlite_master ORDER BY name LIMIT 50;")
-	Area.text(EscapeHtml(SqlText))
+	Area.text(SqlText)
 	Dim Actions As MiniHtml = NewTag(Form, "div", "sql-actions")
 	Dim RunButton As MiniHtml = NewTag(Actions, "button", "btn-primary")
 	RunButton.attr("type", "submit").text("Run query")
@@ -357,7 +357,7 @@ Private Sub WriteSqlWorkspace (resp As ServletResponse, DbName As String, req As
 		Dim ErrorBox As MiniHtml = NewTag(Content, "section", "sql-error")
 		AddText(ErrorBox, "strong", "", "Unable to run this statement")
 		Dim ErrorText As MiniHtml = NewTag(ErrorBox, "pre", "sql-code")
-		ErrorText.text(EscapeHtml(Problem))
+		ErrorText.text(Problem)
 	End If
 	If HasSqlResult And Problem = "" Then AddSqlResult(Content, Result)
 	WritePage(resp, DbName & " · SQL", Content)
@@ -384,7 +384,7 @@ Private Sub AddSqlResult (Parent As MiniHtml, Result As Map)
 	Dim HeaderRow As MiniHtml = NewTag(Head, "tr", "")
 	For Each Column As Map In Columns
 		Dim HeaderCell As MiniHtml = NewTag(HeaderRow, "th", "")
-		HeaderCell.text(EscapeHtml(Column.Get("name")))
+		HeaderCell.text(Column.Get("name"))
 		Dim TypeName As String = Column.Get("type")
 		If TypeName <> "" Then HeaderCell.attr("title", EscapeHtml(TypeName))
 	Next
@@ -797,7 +797,7 @@ Private Sub RenderEditPage (resp As ServletResponse, DbName As String, TableName
 		Dim ErrorBox As MiniHtml = NewTag(Content, "section", "sql-error")
 		AddText(ErrorBox, "strong", "", IIf(IsInsert, "Unable to insert this row", "Unable to save this row"))
 		Dim ErrorText As MiniHtml = NewTag(ErrorBox, "pre", "sql-code")
-		ErrorText.text(EscapeHtml(Problem))
+		ErrorText.text(Problem)
 	End If
 	If IsInsert = False And RowLoaded = False Then
 		WritePage(resp, TableName & " · Edit", Content)
@@ -842,7 +842,7 @@ Private Sub RenderEditPage (resp As ServletResponse, DbName As String, TableName
 		Dim LabelText As String = ColumnName & IIf(DeclaredType = "", "", " · " & DeclaredType)
 		If IsPk Then LabelText = LabelText & " · PRIMARY KEY"
 		If NotNull And IsPk = False Then LabelText = LabelText & " · required"
-		Label.text(EscapeHtml(LabelText))
+		Label.text(LabelText)
 		If Blob And FieldNull Then
 			Dim NullBlobBox As MiniHtml = NewTag(Group, "div", "edit-readonly")
 			AddText(NullBlobBox, "span", "null-value", "NULL")
@@ -853,7 +853,7 @@ Private Sub RenderEditPage (resp As ServletResponse, DbName As String, TableName
 			AddText(Group, "p", "field-note", "Binary values are not editable in this form.")
 		Else If IsInsert = False And IsPk Then
 			Dim KeyBox As MiniHtml = NewTag(Group, "div", "edit-readonly")
-			KeyBox.text(EscapeHtml(FieldText))
+			KeyBox.text(FieldText)
 			AddHiddenInput(Group, "f" & i, FieldText)
 		Else If TooLarge Then
 			Dim LargeBox As MiniHtml = NewTag(Group, "div", "edit-readonly")
@@ -914,7 +914,7 @@ Private Sub AddEditFieldInput (Parent As MiniHtml, Index As Int, DeclaredType As
 	Else
 		Dim Area As MiniHtml = NewTag(Parent, "textarea", "edit-input edit-textarea")
 		Area.attr("name", "f" & Index).attr("rows", "3").attr("maxlength", "" & MAX_EDIT_VALUE)
-		Area.text(EscapeHtml(Value))
+		Area.text(Value)
 	End If
 End Sub
 
@@ -1589,7 +1589,7 @@ Private Sub WriteDatabaseOverview (resp As ServletResponse, Name As String, Db A
 			Else
 				Link.attr("href", EscapeHtml(ObjectUrl(Name, ObjectName)))
 			End If
-			Link.text(EscapeHtml(ObjectName))
+			Link.text(ObjectName)
 			AddText(Row, "span", "object-type", ObjectType)
 		Next
 		If SchemaObjects.Size > MAX_OBJECTS Then AddText(ObjectList, "p", "muted note", "Showing the first 500 objects.")
@@ -1740,7 +1740,7 @@ Private Sub WriteTablePage (resp As ServletResponse, DbName As String, TableName
 		Dim HeaderCell As MiniHtml = NewTag(HeaderRow, "th", "")
 		Dim HeaderLink As MiniHtml = NewTag(HeaderCell, "a", "sort-link")
 		HeaderLink.attr("href", EscapeHtml(TableUrl(DbName, TableName, 1, ColumnName, NextDirection, SearchText)))
-		HeaderLink.text(EscapeHtml(ColumnName))
+		HeaderLink.text(ColumnName)
 		If SortColumn = ColumnName Then AddText(HeaderCell, "span", "sort-state", IIf(SortDirection = "ASC", " ↑", " ↓"))
 	Next
 	Dim Body As MiniHtml = NewTag(DataGrid, "tbody", "")
@@ -2245,10 +2245,10 @@ Private Sub WritePage (resp As ServletResponse, Title As String, Content As Mini
 	Dim ColorScheme As MiniHtml = NewTag(Head, "meta", "")
 	ColorScheme.attr("name", "color-scheme").attr("content", "light dark")
 	Dim PageTitle As MiniHtml = NewTag(Head, "title", "")
-	PageTitle.text(EscapeHtml(Title & " · Pakai Asadi"))
+	PageTitle.text(Title & " · Pakai Asadi")
 	Dim Style As MiniHtml = NewTag(Head, "style", "")
-	Style.text(GetStyles, False)
-	Style.text(GetTableStyles, False)
+	Style.text(GetStyles, True, False)
+	Style.text(GetTableStyles, True, False)
 	Dim Body As MiniHtml = NewTag(Html, "body", "")
 	Dim Sidebar As MiniHtml = NewTag(Body, "aside", "sidebar")
 	Dim Brand As MiniHtml = NewTag(Sidebar, "a", "brand")
@@ -2258,7 +2258,7 @@ Private Sub WritePage (resp As ServletResponse, Title As String, Content As Mini
 	AddText(Sidebar, "div", "nav-label", "WORKSPACE")
 	Dim Nav As MiniHtml = NewTag(Sidebar, "a", "nav-item active")
 	Nav.attr("href", AsadiState.BasePath)
-	Nav.text("▦ &nbsp; Databases")
+	Nav.text("▦  Databases")
 	AddText(Sidebar, "div", "nav-label db-label", "REGISTERED")
 	AddSidebarDatabases(Sidebar)
 	Dim SideFoot As MiniHtml = NewTag(Sidebar, "div", "sidebar-foot")
@@ -2271,7 +2271,7 @@ Private Sub WritePage (resp As ServletResponse, Title As String, Content As Mini
 	AddText(Breadcrumb, "span", "slash", "/")
 	AddText(Breadcrumb, "strong", "", Title)
 	Dim ModeBadge As MiniHtml = NewTag(Topbar, "span", "readonly")
-	ModeBadge.text("&#9817; &nbsp; Read and write")
+	ModeBadge.text("♟  Read and write")
 	Dim ContentArea As MiniHtml = NewTag(MainContent, "div", "content")
 	ContentArea.add(Content)
 	Dim Footer As MiniHtml = NewTag(ContentArea, "footer", "")
@@ -2284,7 +2284,7 @@ Private Sub AddSidebarDatabases (Parent As MiniHtml)
 	For Each Name As String In AsadiState.Databases.Keys
 		Dim Link As MiniHtml = NewTag(Parent, "a", "side-db")
 		Link.attr("href", AsadiState.BasePath & "/db/" & Name)
-		Link.text("▤ &nbsp; " & EscapeHtml(Name))
+		Link.text("▤  " & Name)
 	Next
 End Sub
 
@@ -2302,7 +2302,7 @@ Private Sub WriteError (resp As ServletResponse, Code As Int, Message As String)
 	AddText(Card, "h1", "", Message)
 	AddText(Card, "p", "muted", "The request could not be completed.")
 	Dim Style As MiniHtml = NewTag(Head, "style", "")
-	Style.text("body{font:16px system-ui;background:#f5f7fb;color:#172033;padding:10vh 8vw}.error-card{max-width:620px;margin:auto;background:white;border:1px solid #e5eaf1;border-radius:18px;padding:40px}.eyebrow{color:#4263eb;font-weight:700;letter-spacing:.12em}.muted{color:#68748a}", False)
+	Style.text("body{font:16px system-ui;background:#f5f7fb;color:#172033;padding:10vh 8vw}.error-card{max-width:620px;margin:auto;background:white;border:1px solid #e5eaf1;border-radius:18px;padding:40px}.eyebrow{color:#4263eb;font-weight:700;letter-spacing:.12em}.muted{color:#68748a}", True, False)
 	resp.Status = Code
 	resp.ContentType = "text/html; charset=utf-8"
 	resp.Write(Html.build)
@@ -2318,7 +2318,7 @@ End Sub
 
 Private Sub AddText (Parent As MiniHtml, TagName As String, Classes As String, Value As String) As MiniHtml
 	Dim Tag As MiniHtml = NewTag(Parent, TagName, Classes)
-	Tag.text(EscapeHtml(Value))
+	Tag.text(Value)
 	Return Tag
 End Sub
 

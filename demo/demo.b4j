@@ -51,7 +51,7 @@ Version=10.7
 #Region  Project Attributes
 '================================================
 'Template:  Pakai Asadi (SQLite Manager)
-'Version:   1.00
+'Version:   1.01
 'License:   MIT License
 'Developer: Poon Yip Hoon (Aeric)
 '================================================
@@ -71,7 +71,7 @@ Sub Process_Globals
 	Public Api	As ApiSettings
 	Public HRM	As HttpResponseMessage
 	Private Asadi As PakaiAsadi
-	Public Const APP_VERSION As String = "1.00"
+	Public Const APP_VERSION As String = "1.01"
 End Sub
 
 ' <link>Open in browser|http://127.0.0.1:8080</link>

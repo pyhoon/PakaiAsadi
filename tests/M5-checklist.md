@@ -40,7 +40,7 @@ These checks cover the `.b4xlib` build, its manifest, and consumption from the d
 |---|---|
 | Run the script with a clean `source/` | `BuildLibrary` ends with `Completed successfully`; `release/PakaiAsadi.b4xlib` is created |
 | Inspect the archive | Only the three library modules, `manifest.txt`, and `LICENSE`; `main` and `DemoHomeHandler` are absent |
-| Read `manifest.txt` | `Author=Aeric Poon`, `Version=1.00`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, `Supported Platforms=B4J` |
+| Read `manifest.txt` | `Author=Aeric Poon`, `Version=1.01`, `B4J.DependsOn=EndsMeet, MiniHTML, MiniORMUtils, sqlite-jdbc`, `Supported Platforms=B4J` |
 | Compare `#LibraryVersion` in `source/Pakai-Asadi.b4j` with the manifest | Equal; the script rejects a mismatch |
 | Run a normal `-Task=Build` and then the package script | Packaging succeeds; the script discards the generated `Objects/src` and `Objects/bin` that a library build cannot reuse |
 | Keep a direct `SubExists(Main, ...)` reference in a library module | `BuildLibrary` fails with `Cannot access excluded module: main` |
@@ -86,7 +86,8 @@ A stronger dependency check: keep only `Library1=jcore` and `Library2=pakaiasadi
 2026-10-29, B4JBuilder 10.70 / Java 19.0.2.
 
 - `source/Pakai-Asadi.b4j` built successfully after the `AsadiState.HostModule` change.
-- `tools/package-b4xlib.ps1` ran `-Task=BuildLibrary` successfully and created `release/PakaiAsadi.b4xlib` with the four expected entries.
+- `tools/package-b4xlib.ps1` ran `-Task=BuildLibrary` successfully and created `release/PakaiAsadi.b4xlib` with the five expected entries.
+- MiniHTML 4.05: database-controlled text renders once-escaped. A `notes` row containing `<b>&` rendered as `&lt;b&gt;&amp;` in both the cell and its `title`, with no `&amp;lt;`, and the inline stylesheet stayed raw.
 - `demo/demo.b4j` now ticks `Library10=pakaiasadi` and `demo/` holds no Asadi modules. After installing the archive, the demo built successfully; its `demo.jar` contained `b4j/pakai/asadihandler.class`, `asadistate.class`, `pakaiasadi.class`, and 146 `org/sqlite/` entries.
 - A scratch host containing none of the three Asadi modules, with `Library5=pakaiasadi`, built and ran on port 8080 against a disposable copy of `source/data/demo.db`. The 31-check smoke suite (dashboard, table, edit, insert/update/delete, CSRF negatives, index detail, SQL) and the 6-check edge suite (SQL rejection, SQL error surfacing, `NOT NULL` rejection) passed.
 - A second scratch host listing only `jcore` and `pakaiasadi`, without `#AdditionalJar: sqlite-jdbc`, also built and passed both suites. Its `result.jar` contained `org/sqlite/JDBC.class`.
